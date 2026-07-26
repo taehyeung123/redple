@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>레드플 — AI 원고</title>
+  <link rel="stylesheet" href="panel.css">
+</head>
+<body>
+  <header class="head">
+    <span class="logo">R</span>
+    <b>AI 원고 생성</b>
+    <span id="coins" class="coins">-</span>
+  </header>
+
+  <div id="gate" class="gate hidden">
+    <p id="gate-msg"></p>
+    <a id="gate-link" class="btn btn-primary" href="https://www.redrank.kr/pricing" target="_blank" rel="noopener">
+      레드랭크 구독하기
+    </a>
+  </div>
+
+  <main id="form" class="form">
+    <!-- 1. 글 유형 -->
+    <section class="sec">
+      <h2 class="sec-title">글 유형</h2>
+      <div id="cat-groups"></div>
+      <p id="cat-desc" class="cat-desc"></p>
+    </section>
+
+    <!-- 2. 원본 자료 (해당 유형만) -->
+    <section id="sec-source" class="sec hidden">
+      <h2 class="sec-title"><span id="source-label">원본 자료</span> <em class="req">필수</em></h2>
+      <textarea id="source" rows="5" placeholder="원본 내용을 붙여넣어 주세요"></textarea>
+    </section>
+
+    <!-- 3. 키워드 -->
+    <section class="sec">
+      <h2 class="sec-title">메인 키워드 <em class="req">필수</em></h2>
+      <div class="kw-input-row">
+        <input id="main-kw" type="text" placeholder="예: 강남 파스타 맛집" maxlength="100">
+        <button id="kw-check" class="btn btn-ghost" title="검색량 조회">조회</button>
+      </div>
+      <div id="kw-info"></div>
+
+      <h2 class="sec-title mt">서브 키워드 <em class="opt">선택 · 최대 5개</em></h2>
+      <input id="sub-kw" type="text" placeholder="쉼표로 구분 (예: 파스타, 데이트, 분위기좋은)">
+    </section>
+
+    <!-- 4. 경험 -->
+    <section id="sec-exp" class="sec">
+      <h2 class="sec-title">나의 경험 / 의견 <em id="exp-req" class="req">필수</em></h2>
+      <textarea id="experience" rows="4" placeholder="직접 겪은 일, 느낀 점을 적어주세요. 구체적일수록 AI가 진짜 같은 글을 씁니다."></textarea>
+    </section>
+
+    <!-- 5. 옵션 -->
+    <section class="sec">
+      <h2 class="sec-title">문체</h2>
+      <div class="style-row">
+        <button class="style style-on" data-style="friendly">친근하게</button>
+        <button class="style" data-style="professional">전문적으로</button>
+        <button class="style" data-style="honest">솔직하게</button>
+      </div>
+
+      <h2 class="sec-title mt">분량 <b id="len-val" class="len-val">1,500자</b></h2>
+      <input id="length" type="range" min="500" max="3000" step="100" value="1500">
+
+      <label class="check">
+        <input id="emoji" type="checkbox">
+        <span>이모지 사용</span>
+      </label>
+
+      <h2 class="sec-title mt">추가 요청 <em class="opt">선택</em></h2>
+      <input id="extra" type="text" placeholder="예: 가격 정보를 표로 정리해줘">
+    </section>
+
+    <button id="go" class="btn btn-primary btn-lg">원고 생성하기</button>
+    <p class="cost-hint">생성 1회당 1코인이 차감됩니다</p>
+  </main>
+
+  <!-- 결과 -->
+  <div id="result" class="result hidden">
+    <div class="result-head">
+      <button id="back" class="btn-back">← 다시 작성</button>
+    </div>
+
+    <section class="sec">
+      <h2 class="sec-title">제목</h2>
+      <div id="r-title" class="r-title"></div>
+
+      <h2 class="sec-title mt">본문 <span id="r-len" class="r-len"></span></h2>
+      <div id="r-body" class="r-body"></div>
+
+      <h2 class="sec-title mt">해시태그</h2>
+      <div id="r-tags" class="r-tags"></div>
+
+      <div id="r-seo" class="r-seo"></div>
+    </section>
+
+    <div class="result-actions">
+      <button id="send-editor" class="btn btn-primary">네이버 에디터로 보내기</button>
+      <button id="copy-body" class="btn btn-ghost">본문만 복사</button>
+    </div>
+    <p class="cost-hint">보낸 뒤 네이버 블로그 글쓰기 화면에서 레드플 패널의 <b>"레드랭크 원고 불러오기"</b>를 눌러주세요</p>
+  </div>
+
+  <div id="loading" class="loading-overlay hidden">
+    <div class="spinner"></div>
+    <p>AI가 원고를 쓰고 있습니다…</p>
+    <small>보통 20~40초 걸립니다</small>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script type="module" src="panel.js"></script>
+</body>
+</html>

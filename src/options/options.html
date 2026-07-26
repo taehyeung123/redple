@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>레드플 설정</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="wrap">
+    <header class="head">
+      <span class="logo">R</span>
+      <div>
+        <h1>레드플 설정</h1>
+        <p>레드랭크 블로그 어시스턴트</p>
+      </div>
+    </header>
+
+    <section class="card">
+      <h2>계정 연결</h2>
+      <p class="desc">
+        레드랭크 <a href="https://www.redrank.kr/profile" target="_blank" rel="noopener">프로필 페이지</a>에서
+        API 키를 발급받아 입력하세요. 플랜·코인 정보를 불러오는 데 사용됩니다.
+      </p>
+      <div class="row">
+        <input id="api-key" type="password" placeholder="rr_...">
+        <button id="toggle-key" class="btn btn-ghost" type="button">보기</button>
+        <button id="save-key" class="btn btn-primary" type="button">저장 후 확인</button>
+      </div>
+      <div id="key-status" class="status"></div>
+    </section>
+
+    <section class="card">
+      <h2>기능</h2>
+
+      <label class="toggle">
+        <input id="opt-search" type="checkbox">
+        <span class="toggle-text">
+          <b>네이버 검색 결과 분석 카드</b>
+          <small>검색할 때마다 검색량·경쟁률·트렌드를 우측 상단에 표시합니다</small>
+        </span>
+      </label>
+
+      <label class="toggle">
+        <input id="opt-editor" type="checkbox">
+        <span class="toggle-text">
+          <b>블로그 에디터 도구 패널</b>
+          <small>글자수·이미지 카운터, 금지어 검사, 법적 검사, 형태소 분석 패널을 표시합니다</small>
+        </span>
+      </label>
+
+      <label class="toggle">
+        <input id="opt-popup" type="checkbox">
+        <span class="toggle-text">
+          <b>"작성 중인 글" 팝업 자동 닫기</b>
+          <small>글쓰기 진입 시 뜨는 이어쓰기·도움말 팝업을 자동으로 닫습니다</small>
+        </span>
+      </label>
+    </section>
+
+    <section class="card">
+      <h2>고급</h2>
+      <p class="desc">레드랭크 서버 주소입니다. 특별한 이유가 없으면 바꾸지 마세요.</p>
+      <div class="row">
+        <input id="api-base" type="text" placeholder="https://www.redrank.kr">
+        <button id="save-base" class="btn btn-ghost" type="button">저장</button>
+      </div>
+    </section>
+
+    <footer class="foot">
+      <span id="ver"></span>
+      <a href="https://www.redrank.kr" target="_blank" rel="noopener">redrank.kr</a>
+    </footer>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script type="module" src="options.js"></script>
+</body>
+</html>

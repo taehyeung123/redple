@@ -1,0 +1,476 @@
+/* 레드플 — 블로그 에디터 사이드 패널
+   네이버 에디터와 충돌하지 않도록 전부 #redple-editor-panel 하위로 스코프한다. */
+
+#redple-editor-panel {
+    position: fixed;
+    top: 76px;
+    right: 16px;
+    z-index: 2147483000;
+    width: 292px;
+    max-height: calc(100vh - 100px);
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    border: 1px solid #e6e6e6;
+    border-radius: 14px;
+    box-shadow: 0 10px 32px rgba(0, 0, 0, 0.14);
+    font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Malgun Gothic', sans-serif;
+    color: #111111;
+    overflow: hidden;
+}
+
+#redple-editor-panel * { box-sizing: border-box; }
+
+#redple-editor-panel .redple-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+    padding: 11px 13px;
+    background: linear-gradient(135deg, #1a1a1d 0%, #0e0e10 100%);
+}
+
+#redple-editor-panel .redple-logo {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 6px;
+    background: #ff3b3b;
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 900;
+    line-height: 1;
+    box-shadow: 0 0 10px rgba(255, 59, 59, 0.6);
+}
+
+#redple-editor-panel .redple-title {
+    flex: 1;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #ffffff;
+}
+
+#redple-editor-panel .redple-toggle {
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    border: none;
+    border-radius: 5px;
+    background: rgba(255, 255, 255, 0.12);
+    color: #ffffff;
+    font-size: 13px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+#redple-editor-panel .redple-toggle:hover { background: rgba(255, 255, 255, 0.24); }
+
+#redple-editor-panel.redple-collapsed { max-height: none; }
+#redple-editor-panel.redple-collapsed .redple-body { display: none; }
+
+#redple-editor-panel .redple-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 12px 13px 14px;
+}
+
+#redple-editor-panel .redple-body::-webkit-scrollbar { width: 6px; }
+#redple-editor-panel .redple-body::-webkit-scrollbar-thumb { background: #d8d8d8; border-radius: 3px; }
+
+/* 버튼 */
+#redple-editor-panel .redple-btn {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    border: none;
+    border-radius: 9px;
+    font-family: inherit;
+    font-size: 12.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+}
+
+#redple-editor-panel .redple-btn:active { transform: translateY(1px); }
+
+#redple-editor-panel .redple-btn-primary {
+    background: #ff3b3b;
+    color: #ffffff;
+    box-shadow: 0 2px 10px rgba(255, 59, 59, 0.32);
+}
+#redple-editor-panel .redple-btn-primary:hover { background: #e03333; }
+
+#redple-editor-panel .redple-btn-sm {
+    padding: 7px;
+    font-size: 11.5px;
+    background: #f0f0f2;
+    color: #333333;
+}
+#redple-editor-panel .redple-btn-sm:hover { background: #e6e6e9; }
+
+#redple-editor-panel .redple-hint {
+    margin: 6px 0 12px;
+    font-size: 10.5px;
+    line-height: 1.5;
+    color: #999999;
+    text-align: center;
+}
+
+/* 카운터 */
+#redple-editor-panel .redple-counters {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+#redple-editor-panel .redple-counter {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 8px 2px;
+    background: #f7f7f8;
+    border: 1px solid #eeeeef;
+    border-radius: 8px;
+}
+
+#redple-editor-panel .redple-counter b {
+    font-size: 13px;
+    font-weight: 800;
+    color: #111111;
+    line-height: 1.2;
+}
+
+#redple-editor-panel .redple-counter span {
+    font-size: 9px;
+    color: #888888;
+}
+
+#redple-editor-panel .redple-guide {
+    padding: 7px;
+    margin-bottom: 12px;
+    border-radius: 7px;
+    font-size: 11px;
+    font-weight: 700;
+    text-align: center;
+}
+
+#redple-editor-panel .redple-guide-ok   { background: #e8f8ee; color: #1a8046; }
+#redple-editor-panel .redple-guide-warn { background: #fff6e5; color: #a86a00; }
+#redple-editor-panel .redple-guide-low  { background: #ffecec; color: #c22; }
+
+/* 태그 힌트 */
+#redple-editor-panel .redple-tag-hint {
+    padding: 10px;
+    margin-bottom: 12px;
+    background: #f7f7f8;
+    border: 1px solid #eeeeef;
+    border-radius: 9px;
+}
+
+#redple-editor-panel .redple-tag-hint p {
+    margin: 0 0 6px;
+    font-size: 10.5px;
+    color: #777777;
+}
+
+#redple-editor-panel .redple-tag-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 8px;
+}
+
+#redple-editor-panel .redple-tag-list span {
+    padding: 2.5px 6px;
+    border-radius: 5px;
+    background: #ffecec;
+    color: #d33;
+    font-size: 10px;
+}
+
+/* 탭 */
+#redple-editor-panel .redple-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+    padding: 3px;
+    margin-bottom: 10px;
+    background: #f0f0f2;
+    border-radius: 9px;
+}
+
+#redple-editor-panel .redple-tab {
+    padding: 7px 4px;
+    border: none;
+    border-radius: 7px;
+    background: transparent;
+    color: #777777;
+    font-family: inherit;
+    font-size: 11.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+
+#redple-editor-panel .redple-tab-on {
+    background: #ffffff;
+    color: #ff3b3b;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+#redple-editor-panel .redple-pane { display: none; }
+#redple-editor-panel .redple-pane-on { display: block; }
+
+#redple-editor-panel .redple-empty,
+#redple-editor-panel .redple-loading {
+    margin: 0;
+    padding: 14px 8px;
+    font-size: 11px;
+    color: #aaaaaa;
+    text-align: center;
+    line-height: 1.5;
+}
+
+#redple-editor-panel .redple-error-inline {
+    margin: 0;
+    padding: 10px;
+    background: #fff5f5;
+    border: 1px solid #ffd4d4;
+    border-radius: 8px;
+    color: #c22;
+    font-size: 11px;
+    line-height: 1.5;
+}
+
+/* 금지어 */
+#redple-editor-panel .redple-banned-item {
+    padding: 9px 10px;
+    margin-bottom: 7px;
+    background: #fff8f8;
+    border: 1px solid #ffdcdc;
+    border-left: 3px solid #ff3b3b;
+    border-radius: 8px;
+}
+
+#redple-editor-panel .redple-banned-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 5px;
+}
+
+#redple-editor-panel .redple-banned-type {
+    font-size: 11px;
+    font-weight: 800;
+    color: #c22;
+}
+
+#redple-editor-panel .redple-banned-count {
+    font-size: 10px;
+    color: #999999;
+}
+
+#redple-editor-panel .redple-banned-words {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 5px;
+}
+
+#redple-editor-panel .redple-banned-words code {
+    padding: 1.5px 5px;
+    border-radius: 4px;
+    background: #ffe4e4;
+    color: #a11;
+    font-family: inherit;
+    font-size: 10.5px;
+}
+
+#redple-editor-panel .redple-banned-hint {
+    margin: 0;
+    font-size: 10px;
+    line-height: 1.5;
+    color: #888888;
+}
+
+/* 법적 검사 */
+#redple-editor-panel .redple-legal-cats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+    margin-bottom: 10px;
+}
+
+#redple-editor-panel .redple-cat {
+    padding: 7px 2px;
+    border: 1px solid #e2e2e5;
+    border-radius: 7px;
+    background: #ffffff;
+    color: #666666;
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+#redple-editor-panel .redple-cat:hover { border-color: #ffb0b0; color: #d33; }
+
+#redple-editor-panel .redple-cat-on {
+    background: #ff3b3b;
+    border-color: #ff3b3b;
+    color: #ffffff;
+}
+
+#redple-editor-panel .redple-legal-score {
+    margin-bottom: 6px;
+    font-size: 14px;
+    font-weight: 800;
+}
+
+#redple-editor-panel .redple-legal-risk {
+    font-size: 11px;
+    font-weight: 700;
+    opacity: 0.85;
+}
+
+#redple-editor-panel .redple-legal-summary {
+    margin: 0 0 10px;
+    font-size: 11px;
+    line-height: 1.6;
+    color: #555555;
+}
+
+#redple-editor-panel .redple-legal-issue {
+    padding: 9px 10px;
+    margin-bottom: 7px;
+    border-radius: 8px;
+    background: #fafafa;
+    border: 1px solid #eaeaea;
+    border-left: 3px solid #bbbbbb;
+}
+
+#redple-editor-panel .redple-sev-high   { border-left-color: #e33; background: #fff7f7; }
+#redple-editor-panel .redple-sev-medium { border-left-color: #f39c12; background: #fffaf2; }
+#redple-editor-panel .redple-sev-low    { border-left-color: #999999; }
+
+#redple-editor-panel .redple-legal-text {
+    margin-bottom: 4px;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #222222;
+    line-height: 1.5;
+}
+
+#redple-editor-panel .redple-legal-law {
+    display: inline-block;
+    padding: 1.5px 6px;
+    margin-bottom: 5px;
+    border-radius: 4px;
+    background: #eeeeef;
+    font-size: 9.5px;
+    color: #666666;
+}
+
+#redple-editor-panel .redple-legal-reason,
+#redple-editor-panel .redple-legal-fix {
+    margin: 0 0 3px;
+    font-size: 10.5px;
+    line-height: 1.55;
+    color: #666666;
+}
+
+#redple-editor-panel .redple-legal-fix { color: #1a8046; font-weight: 600; }
+
+/* 형태소 */
+#redple-editor-panel .redple-morph-list { margin-top: 10px; }
+
+#redple-editor-panel .redple-morph-row {
+    display: grid;
+    grid-template-columns: 72px 1fr 28px;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 5px;
+}
+
+#redple-editor-panel .redple-morph-word {
+    font-size: 11px;
+    color: #333333;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#redple-editor-panel .redple-morph-bar {
+    display: block;
+    height: 7px;
+    border-radius: 4px;
+    background: #f0f0f2;
+    overflow: hidden;
+}
+
+#redple-editor-panel .redple-morph-bar i {
+    display: block;
+    height: 100%;
+    border-radius: 4px;
+    background: linear-gradient(90deg, #ff3b3b, #ff6b6b);
+}
+
+#redple-editor-panel .redple-morph-count {
+    font-size: 10px;
+    color: #999999;
+    text-align: right;
+}
+
+/* 토스트 */
+.redple-toast {
+    position: fixed;
+    left: 50%;
+    bottom: 36px;
+    transform: translateX(-50%);
+    z-index: 2147483001;
+    max-width: 420px;
+    padding: 12px 18px;
+    border-radius: 10px;
+    background: #1a1a1d;
+    color: #ffffff;
+    font-family: 'Noto Sans KR', -apple-system, sans-serif;
+    font-size: 12.5px;
+    line-height: 1.5;
+    box-shadow: 0 8px 26px rgba(0, 0, 0, 0.3);
+    transition: opacity 0.35s, transform 0.35s;
+}
+
+.redple-toast-ok    { border-left: 3px solid #2ecc71; }
+.redple-toast-warn  { border-left: 3px solid #f39c12; }
+.redple-toast-error { border-left: 3px solid #ff3b3b; }
+
+.redple-toast-out {
+    opacity: 0;
+    transform: translateX(-50%) translateY(8px);
+}
+
+@media (prefers-color-scheme: dark) {
+    #redple-editor-panel {
+        background: #1c1c1f;
+        border-color: #313136;
+        color: #f2f2f4;
+    }
+    #redple-editor-panel .redple-counter { background: #26262a; border-color: #313136; }
+    #redple-editor-panel .redple-counter b { color: #f2f2f4; }
+    #redple-editor-panel .redple-tabs { background: #26262a; }
+    #redple-editor-panel .redple-tab-on { background: #1c1c1f; }
+    #redple-editor-panel .redple-btn-sm { background: #2a2a2e; color: #e2e2e6; }
+    #redple-editor-panel .redple-cat { background: #26262a; border-color: #35353b; color: #b6b6bd; }
+    #redple-editor-panel .redple-legal-issue { background: #232327; border-color: #313136; }
+    #redple-editor-panel .redple-legal-text { color: #f2f2f4; }
+    #redple-editor-panel .redple-tag-hint { background: #26262a; border-color: #313136; }
+    #redple-editor-panel .redple-morph-word { color: #d8d8dd; }
+    #redple-editor-panel .redple-morph-bar { background: #2a2a2e; }
+}

@@ -1,0 +1,59 @@
+{
+  "manifest_version": 3,
+  "name": "레드플 — 레드랭크 블로그 어시스턴트",
+  "short_name": "레드플",
+  "version": "0.1.0",
+  "description": "네이버 검색량 실시간 표시, 블로그 원고·이미지 자동입력, AI 원고 생성, 법적 위험 검사까지. 레드랭크 구독자 전용 무료 확장.",
+  "icons": {
+    "16": "assets/icon-16.png",
+    "32": "assets/icon-32.png",
+    "48": "assets/icon-48.png",
+    "128": "assets/icon-128.png"
+  },
+  "background": {
+    "service_worker": "src/background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "src/popup/popup.html",
+    "default_icon": {
+      "16": "assets/icon-16.png",
+      "32": "assets/icon-32.png"
+    },
+    "default_title": "레드플"
+  },
+  "side_panel": {
+    "default_path": "src/sidepanel/panel.html"
+  },
+  "options_page": "src/options/options.html",
+  "permissions": [
+    "storage",
+    "sidePanel",
+    "contextMenus"
+  ],
+  "host_permissions": [
+    "https://www.redrank.kr/*",
+    "https://redrank.kr/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://search.naver.com/*"],
+      "js": ["src/content/naver-search.js"],
+      "css": ["src/content/naver-search.css"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://blog.naver.com/*", "https://section.blog.naver.com/*"],
+      "js": ["src/content/blog-editor.js"],
+      "css": ["src/content/blog-editor.css"],
+      "run_at": "document_idle",
+      "all_frames": true
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["assets/icon-32.png", "assets/icon-128.png"],
+      "matches": ["https://*.naver.com/*"]
+    }
+  ]
+}
