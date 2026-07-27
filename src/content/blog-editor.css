@@ -112,6 +112,10 @@
 }
 #redple-editor-panel .redple-btn-sm:hover { background: #e6e6e9; }
 
+#redple-editor-panel .redple-btn-apply {
+    margin-top: 6px;
+}
+
 #redple-editor-panel .redple-hint {
     margin: 6px 0 12px;
     font-size: 10.5px;

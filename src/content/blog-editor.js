@@ -165,13 +165,8 @@
         }
     }
 
-    async function applyDraft() {
-        const draft = await readDraftFromClipboard();
-        if (!draft) {
-            toast('클립보드에 레드랭크 원고가 없습니다. 레드랭크에서 "네이버 확장으로 보내기"를 먼저 눌러주세요.', 'warn');
-            return;
-        }
-
+    /** 원고 객체(이미 파싱됨)를 실제 에디터에 채운다. 사이드패널 직접전송/클립보드 양쪽에서 공용으로 쓴다. */
+    async function applyDraftObject(draft) {
         const titleEl = getTitleEl();
         const bodyEl = getBodyEl();
 
@@ -203,6 +198,17 @@
         }
         refreshStats();
         renderTagHint();
+        return { applied: done, imageResult: imgMsg };
+    }
+
+    /** 패널의 "레드랭크 원고 불러오기" 버튼 — 클립보드에서 읽어서 적용 */
+    async function applyDraft() {
+        const draft = await readDraftFromClipboard();
+        if (!draft) {
+            toast('클립보드에 레드랭크 원고가 없습니다. 레드랭크에서 "네이버 확장으로 보내기"를 먼저 눌러주세요.', 'warn');
+            return;
+        }
+        await applyDraftObject(draft);
     }
 
     // ── 통계/검사 ───────────────────────────────────────────────
@@ -449,10 +455,13 @@
           </div>
 
           <div class="redple-body">
-            <button id="redple-apply" class="redple-btn redple-btn-primary">
-              레드랭크 원고 불러오기
+            <button id="redple-open-panel" class="redple-btn redple-btn-primary">
+              AI 원고 생성 열기
             </button>
-            <p class="redple-hint">레드랭크에서 "네이버 확장으로 보내기"를 누른 뒤 사용하세요</p>
+            <button id="redple-apply" class="redple-btn redple-btn-sm redple-btn-apply">
+              레드랭크 원고 다시 불러오기
+            </button>
+            <p class="redple-hint">AI 원고 생성에서 만든 원고는 자동으로 채워집니다. 안 채워졌다면 이 버튼으로 다시 시도하세요.</p>
 
             <div class="redple-counters">
               <div class="redple-counter">
@@ -510,6 +519,7 @@
         });
 
         panel.querySelector('#redple-apply').addEventListener('click', applyDraft);
+        panel.querySelector('#redple-open-panel').addEventListener('click', () => sendBg('panel.open'));
         panel.querySelector('#redple-morph-run').addEventListener('click', runMorpheme);
 
         panel.querySelectorAll('.redple-tab').forEach((tab) => {
@@ -560,6 +570,20 @@
             if (tries > 40) clearInterval(wait); // 20초 후 포기
         }, 500);
     }
+
+    // 사이드패널(AI 원고 생성)이 클립보드를 거치지 않고 이 탭에 바로 원고를 보낼 때 받는 창구.
+    // hasEditor()가 true인 프레임(보통 mainFrame iframe)만 실제로 적용한다.
+    chromeApi.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+        if (msg?.cmd !== 'redple.applyDraft') return false;
+        if (!hasEditor()) {
+            sendResponse({ ok: false, error: 'no-editor-in-frame' });
+            return false;
+        }
+        applyDraftObject(msg.draft)
+            .then((r) => sendResponse({ ok: true, ...r }))
+            .catch((e) => sendResponse({ ok: false, error: String(e?.message || e) }));
+        return true; // 비동기 응답
+    });
 
     boot();
 })();

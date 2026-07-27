@@ -222,6 +222,23 @@ $('back').addEventListener('click', () => {
 
 // ── 에디터로 보내기 ─────────────────────────────────────────
 
+/** 지금 활성 탭이 네이버 블로그 글쓰기 화면이면, 클립보드를 거치지 않고 바로 채워넣는다. */
+function sendToActiveTab(draft) {
+    return new Promise((resolve) => {
+        chromeApi.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            const tab = tabs?.[0];
+            if (!tab?.id) { resolve({ ok: false, error: 'no-active-tab' }); return; }
+            chromeApi.tabs.sendMessage(tab.id, { cmd: 'redple.applyDraft', draft }, (res) => {
+                if (chromeApi.runtime.lastError) {
+                    resolve({ ok: false, error: chromeApi.runtime.lastError.message });
+                    return;
+                }
+                resolve(res || { ok: false, error: '응답 없음' });
+            });
+        });
+    });
+}
+
 $('send-editor').addEventListener('click', async () => {
     const r = state.result;
     if (!r) return;
@@ -239,9 +256,17 @@ $('send-editor').addEventListener('click', async () => {
         ts: Date.now(),
     };
 
+    // 1순위: 지금 보고 있는 네이버 블로그 글쓰기 탭에 바로 적용 (클립보드 왕복 없이 한 번에)
+    const direct = await sendToActiveTab(payload);
+    if (direct.ok) {
+        toast(`${(direct.applied || []).join(' · ') || '원고'} 자동 입력 완료!`, 'ok');
+        return;
+    }
+
+    // 폴백: 블로그 글쓰기 탭이 아니거나 패널이 아직 안 떠서 못 받은 경우 — 클립보드로
     try {
         await navigator.clipboard.writeText(JSON.stringify(payload));
-        toast('복사됐습니다. 네이버 블로그 글쓰기 화면에서 "레드랭크 원고 불러오기"를 눌러주세요', 'ok');
+        toast('네이버 블로그 글쓰기 화면이 아니라 클립보드에 복사했습니다. 그 화면에서 "레드랭크 원고 다시 불러오기"를 눌러주세요', 'ok');
     } catch {
         toast('클립보드 복사에 실패했습니다. "본문만 복사"를 이용해주세요');
     }
