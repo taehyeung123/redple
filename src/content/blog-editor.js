@@ -332,7 +332,7 @@
 
         const res = await sendBg('api.legalCheck', { text: text.slice(0, 10000), category });
         if (!res.ok) {
-            box.innerHTML = `<p class="redple-error-inline">${esc(res.error || '검사 실패')}${res.needLogin ? ' — 레드랭크에 로그인해주세요' : ''}</p>`;
+            box.innerHTML = `<p class="redple-error-inline">${esc(res.error || '검사 실패')}${(res.needKey || res.needLogin) ? ' — 확장 아이콘에서 API 키를 다시 연결해주세요' : ''}</p>`;
             return;
         }
 
@@ -363,7 +363,7 @@
 
         const res = await sendBg('api.nlp', { text: text.slice(0, 50000), mode: 'morpheme' });
         if (!res.ok) {
-            box.innerHTML = `<p class="redple-error-inline">${esc(res.error || '분석 실패')}${res.needLogin ? ' — 레드랭크에 로그인해주세요' : ''}</p>`;
+            box.innerHTML = `<p class="redple-error-inline">${esc(res.error || '분석 실패')}${(res.needKey || res.needLogin) ? ' — 확장 아이콘에서 API 키를 다시 연결해주세요' : ''}</p>`;
             return;
         }
 

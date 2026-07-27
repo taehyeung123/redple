@@ -3,10 +3,10 @@
  *
  * 모든 네트워크 호출은 여기서만 한다.
  *  - host_permissions에 redrank.kr이 있으므로 CORS 제약 없이 호출 가능
- *  - credentials:'include'로 레드랭크 로그인 쿠키가 함께 전송됨
- *    → 로그인/코인이 필요한 API(원고 생성·법적 검사·형태소)는 사용자가
- *      www.redrank.kr에 로그인돼 있으면 그대로 동작한다.
- *  - API 키(X-RR-API-Key)는 플랜/코인 표시용(/api/extension/verify)에 사용.
+ *  - ⚠️ 로그인 쿠키(redrank_user)는 sameSite:'lax'라서 확장의 크로스오리진
+ *    fetch에는 실리지 않는다(정상 동작 — Lax를 풀면 CSRF 위험). 그래서
+ *    로그인/코인이 필요한 API는 전부 X-RR-API-Key 헤더로 인증한다.
+ *    (레드랭크 서버도 이 헤더를 받도록 requireAuth/guardAndCharge가 지원함)
  */
 
 import { DEFAULT_SETTINGS, getSettings, getApiKey } from './common/storage.js';
@@ -18,14 +18,22 @@ async function apiBase() {
     return (s.apiBase || DEFAULT_SETTINGS.apiBase).replace(/\/$/, '');
 }
 
-/** 공통 fetch 래퍼 — { ok, status, data | error } 형태로 통일 */
-async function callRedrank(path, { method = 'GET', body, headers = {} } = {}) {
+/** 공통 fetch 래퍼 — { ok, status, data | error } 형태로 통일. auth:true면 API 키를 헤더에 싣는다. */
+async function callRedrank(path, { method = 'GET', body, headers = {}, auth = false } = {}) {
     const base = await apiBase();
+    const finalHeaders = { ...headers };
+    if (body) finalHeaders['Content-Type'] = 'application/json';
+
+    if (auth) {
+        const key = await getApiKey();
+        if (!key) return { ok: false, status: 401, error: '레드랭크 계정이 연결되지 않았습니다', needKey: true };
+        finalHeaders['X-RR-API-Key'] = key;
+    }
+
     try {
         const res = await fetch(base + path, {
             method,
-            credentials: 'include',
-            headers: body ? { 'Content-Type': 'application/json', ...headers } : headers,
+            headers: finalHeaders,
             body: body ? JSON.stringify(body) : undefined,
         });
         let data = null;
@@ -66,17 +74,17 @@ const handlers = {
 
     /** AI 원고 생성 (레드랭크 로그인 + 코인 필요) */
     async 'api.generate'(payload) {
-        return callRedrank('/api/ai/generate', { method: 'POST', body: payload.body });
+        return callRedrank('/api/ai/generate', { method: 'POST', body: payload.body, auth: true });
     },
 
     /** 법적 위험 검사 (레드랭크 로그인 + 코인 필요) */
     async 'api.legalCheck'({ text, category }) {
-        return callRedrank('/api/ai/legal-check', { method: 'POST', body: { text, category } });
+        return callRedrank('/api/ai/legal-check', { method: 'POST', body: { text, category }, auth: true });
     },
 
     /** 형태소/맞춤법 (레드랭크 로그인 필요) */
     async 'api.nlp'({ text, mode }) {
-        return callRedrank('/api/nlp/analyze', { method: 'POST', body: { text, mode } });
+        return callRedrank('/api/nlp/analyze', { method: 'POST', body: { text, mode }, auth: true });
     },
 
     /** 이미지 URL → dataURL (에디터 첨부용; 콘텐트 스크립트의 CORS 우회) */

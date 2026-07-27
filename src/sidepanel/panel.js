@@ -188,8 +188,8 @@ $('go').addEventListener('click', async () => {
     $('loading').classList.add('hidden');
 
     if (!res.ok) {
-        toast(res.needLogin
-            ? '레드랭크에 로그인한 뒤 다시 시도해주세요 (redrank.kr 탭에서 로그인)'
+        toast(res.needKey || res.needLogin
+            ? '레드랭크 계정 연결이 만료됐습니다. 확장 아이콘에서 API 키를 다시 연결해주세요'
             : (res.error || '원고 생성에 실패했습니다'));
         return;
     }
