@@ -167,12 +167,10 @@ function updateGoCostHint() {
         : '생성 1회당 1코인이 차감됩니다';
 }
 
-document.querySelectorAll('.imgcount').forEach((btn) => {
-    btn.addEventListener('click', () => {
-        state.imageCount = Number(btn.dataset.count) || 0;
-        document.querySelectorAll('.imgcount').forEach((b) => b.classList.toggle('imgcount-on', b === btn));
-        updateGoCostHint();
-    });
+$('img-count').addEventListener('input', (e) => {
+    state.imageCount = Number(e.target.value) || 0;
+    $('img-count-val').textContent = state.imageCount > 0 ? `${state.imageCount}장` : '안 함';
+    updateGoCostHint();
 });
 
 // ── 생성 ────────────────────────────────────────────────────
@@ -182,6 +180,22 @@ function toast(msg, kind = 'err') {
     t.textContent = msg;
     t.className = `toast toast-${kind}`;
     setTimeout(() => t.classList.add('hidden'), 4000);
+}
+
+/**
+ * 이미지 프롬프트를 요청 개수만큼 만든다. 대표 이미지 1장(제목 기준) + 소제목(outline)마다
+ * 1장씩 — 같은 장면을 반복 생성하지 않고, 실제 본문 구성과 어울리는 서로 다른 사진이 나오게 한다.
+ * outline이 짧아 count보다 프롬프트가 모자라면 처음부터 다시 순환한다.
+ */
+function buildImagePrompts(result, mainKeyword, count) {
+    const sections = Array.isArray(result.outline) ? result.outline.filter(Boolean) : [];
+    const base = [
+        `${mainKeyword}, 글 전체를 대표하는 인상적인 대표 사진`,
+        ...sections.map((s) => `${mainKeyword} 중에서도 "${s}" 부분을 구체적으로 보여주는 사진`),
+    ];
+    const prompts = [];
+    for (let i = 0; i < count; i++) prompts.push(base[i % base.length]);
+    return prompts;
 }
 
 $('go').addEventListener('click', async () => {
@@ -240,21 +254,29 @@ $('go').addEventListener('click', async () => {
         images: [],
     };
 
-    // 이미지도 함께 요청했으면 원고 생성 직후 이어서 만든다 — "원고+사진 한 번에"
+    // 이미지도 함께 요청했으면 원고 생성 직후 이어서 만든다 — "원고+사진 한 번에".
+    // 같은 프롬프트를 count장 반복 생성하면 서로 비슷한 사진만 나오므로, 본문 소제목(outline)
+    // 하나마다 별도 프롬프트로 한 장씩 생성해 실제 내용과 어울리는 다양한 사진을 만든다.
     if (state.imageCount > 0) {
         $('loading').querySelector('p').textContent = `이미지 ${state.imageCount}장을 만들고 있습니다…`;
-        const imgRes = await api.generateImage({
-            prompt: state.result.title || mainKeyword,
-            style: 'realistic',
-            size: 'blog',
-            count: state.imageCount,
-        });
-        if (imgRes.ok && Array.isArray(imgRes.data?.images)) {
-            state.result.images = imgRes.data.images.map((im) => ({
-                dataUrl: `data:${im.mimeType || 'image/png'};base64,${im.image}`,
-            }));
-        } else {
-            toast(imgRes.error || '이미지 생성에 실패했습니다. 원고는 정상적으로 만들어졌습니다.', 'warn');
+        const prompts = buildImagePrompts(state.result, mainKeyword, state.imageCount);
+        const results = await Promise.all(
+            prompts.map((prompt) => api.generateImage({ prompt, style: 'realistic', size: 'blog', count: 1 }))
+        );
+
+        const images = [];
+        let failCount = 0;
+        for (const r of results) {
+            const im = r.ok ? r.data?.images?.[0] : null;
+            if (im) images.push({ dataUrl: `data:${im.mimeType || 'image/png'};base64,${im.image}` });
+            else failCount++;
+        }
+        state.result.images = images;
+
+        if (images.length === 0) {
+            toast('이미지 생성에 실패했습니다. 원고는 정상적으로 만들어졌습니다.', 'warn');
+        } else if (failCount > 0) {
+            toast(`이미지 ${images.length}장 생성 완료 (${failCount}장 실패). 원고는 정상적으로 만들어졌습니다.`, 'warn');
         }
     }
 

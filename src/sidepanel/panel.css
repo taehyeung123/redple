@@ -266,30 +266,6 @@ input::placeholder, textarea::placeholder { color: var(--text-3); }
     text-decoration: underline;
 }
 
-/* 이미지 자동 생성 개수 */
-.img-count-row {
-    grid-template-columns: repeat(4, 1fr);
-}
-
-.imgcount {
-    padding: 9px 4px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: var(--bg);
-    color: var(--text-2);
-    font-family: inherit;
-    font-size: 11.5px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.15s;
-}
-
-.imgcount-on {
-    background: var(--red);
-    border-color: var(--red);
-    color: #ffffff;
-    font-weight: 700;
-}
 
 /* 슬라이더 */
 .len-val {
