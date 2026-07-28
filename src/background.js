@@ -87,6 +87,11 @@ const handlers = {
         return callRedrank('/api/nlp/analyze', { method: 'POST', body: { text, mode }, auth: true });
     },
 
+    /** 내 프로필 (말투 샘플 등록 여부 확인용) */
+    async 'api.profile'() {
+        return callRedrank('/api/profile', { auth: true });
+    },
+
     /** 이미지 URL → dataURL (에디터 첨부용; 콘텐트 스크립트의 CORS 우회) */
     async 'api.fetchImage'({ url }) {
         try {

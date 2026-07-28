@@ -45,6 +45,15 @@ async function checkAccess() {
     return true;
 }
 
+/** 프로필에 등록된 말투 샘플이 있으면 "내 말투로 쓰기" 체크박스를 활성화한다 */
+async function checkToneSample() {
+    const res = await api.profile();
+    const hasTone = !!(res.ok && res.data?.profile?.toneSampleUrl);
+    $('tone').disabled = !hasTone;
+    $('tone-setup-link').classList.toggle('hidden', hasTone);
+    if (!hasTone) $('tone').checked = false;
+}
+
 function showGate(msg, href, label) {
     $('form').classList.add('hidden');
     $('gate-msg').textContent = msg;
@@ -180,6 +189,7 @@ $('go').addEventListener('click', async () => {
         useEmoji: $('emoji').checked,
         targetLength: Number($('length').value),
         additionalRequest: $('extra').value.trim(),
+        useToneSample: $('tone').checked && !$('tone').disabled,
     };
     if (state.category) body.category = state.category;
     if (cat?.requiresSource) body.sourceContent = sourceContent;
@@ -305,6 +315,8 @@ async function boot() {
 
     const ok = await checkAccess();
     if (!ok) return;
+
+    checkToneSample();
 
     // 컨텍스트 메뉴로 넘어온 키워드 자동 반영
     const { pendingKeyword, pendingKeywordTs } = await chromeApi.storage.local.get(['pendingKeyword', 'pendingKeywordTs']);

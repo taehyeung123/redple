@@ -23,6 +23,7 @@ export const api = {
     generate: (body) => send('api.generate', { body }),
     legalCheck: (text, category) => send('api.legalCheck', { text, category }),
     nlp: (text, mode) => send('api.nlp', { text, mode }),
+    profile: () => send('api.profile'),
 };
 
 /** 플랜 라벨/색상 */

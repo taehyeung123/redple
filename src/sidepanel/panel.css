@@ -277,6 +277,14 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 .check input { width: 15px; height: 15px; accent-color: var(--red); cursor: pointer; }
+.check input:disabled { cursor: not-allowed; opacity: 0.5; }
+
+.tone-link {
+    margin-left: auto;
+    font-size: 10.5px;
+    color: var(--red);
+    text-decoration: underline;
+}
 
 /* 버튼 */
 .btn {
