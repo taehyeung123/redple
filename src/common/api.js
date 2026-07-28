@@ -21,6 +21,7 @@ export const api = {
     verify: (apiKey) => send('api.verify', { apiKey }),
     keyword: (keyword) => send('api.keyword', { keyword }),
     generate: (body) => send('api.generate', { body }),
+    generateImage: (body) => send('api.generateImage', { body }),
     legalCheck: (text, category) => send('api.legalCheck', { text, category }),
     nlp: (text, mode) => send('api.nlp', { text, mode }),
     profile: () => send('api.profile'),

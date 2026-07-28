@@ -11,6 +11,7 @@ const DRAFT_MAGIC = '__redrank_draft__';
 const state = {
     category: null,
     style: 'friendly',
+    imageCount: 0,
     result: null,
 };
 
@@ -45,13 +46,18 @@ async function checkAccess() {
     return true;
 }
 
-/** 프로필에 등록된 말투 샘플이 있으면 "내 말투로 쓰기" 체크박스를 활성화한다 */
+/** 프로필에 등록된 말투 샘플이 있으면 문체 그룹의 "내 말투로" 버튼을 활성화한다 */
 async function checkToneSample() {
     const res = await api.profile();
     const hasTone = !!(res.ok && res.data?.profile?.toneSampleUrl);
-    $('tone').disabled = !hasTone;
-    $('tone-setup-link').classList.toggle('hidden', hasTone);
-    if (!hasTone) $('tone').checked = false;
+    const toneBtn = document.querySelector('.style[data-style="mytone"]');
+    toneBtn.disabled = !hasTone;
+    $('tone-setup-hint').classList.toggle('hidden', hasTone);
+    // 등록 전에 이미 "내 말투로"가 선택돼 있었을 리는 없지만, 방어적으로 기본 문체로 되돌린다
+    if (!hasTone && state.style === 'mytone') {
+        state.style = 'friendly';
+        document.querySelectorAll('.style').forEach((b) => b.classList.toggle('style-on', b.dataset.style === 'friendly'));
+    }
 }
 
 function showGate(msg, href, label) {
@@ -154,6 +160,21 @@ $('length').addEventListener('input', (e) => {
     $('len-val').textContent = Number(e.target.value).toLocaleString('ko-KR') + '자';
 });
 
+function updateGoCostHint() {
+    const imgCost = state.imageCount * 10;
+    $('go-cost-hint').textContent = imgCost > 0
+        ? `생성 1코인 + 이미지 ${state.imageCount}장(${imgCost}코인) = 총 ${1 + imgCost}코인이 차감됩니다`
+        : '생성 1회당 1코인이 차감됩니다';
+}
+
+document.querySelectorAll('.imgcount').forEach((btn) => {
+    btn.addEventListener('click', () => {
+        state.imageCount = Number(btn.dataset.count) || 0;
+        document.querySelectorAll('.imgcount').forEach((b) => b.classList.toggle('imgcount-on', b === btn));
+        updateGoCostHint();
+    });
+});
+
 // ── 생성 ────────────────────────────────────────────────────
 
 function toast(msg, kind = 'err') {
@@ -181,24 +202,28 @@ $('go').addEventListener('click', async () => {
         return;
     }
 
+    const useToneSample = state.style === 'mytone';
     const body = {
         mainKeyword,
         subKeywords: $('sub-kw').value.split(',').map((s) => s.trim()).filter(Boolean).slice(0, 5),
         experience,
-        style: state.style,
+        // "내 말투로"는 문체 프리셋이 아니라 별도 지시라, 서버에는 기본 문체(친근하게)를
+        // 같이 보내고 useToneSample로 말투 샘플을 우선 적용하게 한다.
+        style: useToneSample ? 'friendly' : state.style,
         useEmoji: $('emoji').checked,
         targetLength: Number($('length').value),
         additionalRequest: $('extra').value.trim(),
-        useToneSample: $('tone').checked && !$('tone').disabled,
+        useToneSample,
     };
     if (state.category) body.category = state.category;
     if (cat?.requiresSource) body.sourceContent = sourceContent;
 
     $('loading').classList.remove('hidden');
+    $('loading').querySelector('p').textContent = 'AI가 원고를 쓰고 있습니다…';
     const res = await api.generate(body);
-    $('loading').classList.add('hidden');
 
     if (!res.ok) {
+        $('loading').classList.add('hidden');
         toast(res.needKey || res.needLogin
             ? '레드랭크 계정 연결이 만료됐습니다. 확장 아이콘에서 API 키를 다시 연결해주세요'
             : (res.error || '원고 생성에 실패했습니다'));
@@ -212,7 +237,28 @@ $('go').addEventListener('click', async () => {
         ...res.data,
         title: markdownToPlainText(res.data.title || ''),
         content: markdownToPlainText(res.data.content || ''),
+        images: [],
     };
+
+    // 이미지도 함께 요청했으면 원고 생성 직후 이어서 만든다 — "원고+사진 한 번에"
+    if (state.imageCount > 0) {
+        $('loading').querySelector('p').textContent = `이미지 ${state.imageCount}장을 만들고 있습니다…`;
+        const imgRes = await api.generateImage({
+            prompt: state.result.title || mainKeyword,
+            style: 'realistic',
+            size: 'blog',
+            count: state.imageCount,
+        });
+        if (imgRes.ok && Array.isArray(imgRes.data?.images)) {
+            state.result.images = imgRes.data.images.map((im) => ({
+                dataUrl: `data:${im.mimeType || 'image/png'};base64,${im.image}`,
+            }));
+        } else {
+            toast(imgRes.error || '이미지 생성에 실패했습니다. 원고는 정상적으로 만들어졌습니다.', 'warn');
+        }
+    }
+
+    $('loading').classList.add('hidden');
     renderResult(state.result);
     checkAccess(); // 코인 잔액 갱신
 });
@@ -224,6 +270,10 @@ function renderResult(r) {
     $('r-title').textContent = r.title || '';
     $('r-body').textContent = r.content || '';
     $('r-len').textContent = `${(r.content || '').replace(/\s/g, '').length.toLocaleString('ko-KR')}자 (공백제외)`;
+
+    const images = Array.isArray(r.images) ? r.images : [];
+    $('r-images-title').classList.toggle('hidden', images.length === 0);
+    $('r-images').innerHTML = images.map((im) => `<img src="${im.dataUrl}" alt="생성된 이미지">`).join('');
 
     const tags = Array.isArray(r.hashtags) ? r.hashtags : [];
     $('r-tags').innerHTML = tags.map((t) => `<span>#${String(t).replace(/^#/, '')}</span>`).join('');
@@ -270,7 +320,7 @@ $('send-editor').addEventListener('click', async () => {
             .map((t) => String(t).replace(/^#/, '').trim())
             .filter(Boolean)
             .slice(0, 30),
-        images: [],
+        images: Array.isArray(r.images) ? r.images : [],
         ts: Date.now(),
     };
 
@@ -289,10 +339,17 @@ $('send-editor').addEventListener('click', async () => {
         return;
     }
 
-    if (clipboardOk) {
-        toast('네이버 블로그 글쓰기 화면이 아니라 클립보드에 복사했습니다. 그 화면에서 "레드랭크 원고 다시 불러오기"를 눌러주세요', 'ok');
+    // direct.error가 있으면 응답 자체가 안 온 것(다른 탭/에디터 준비 전) — 클립보드 안내가 맞다.
+    // error가 없는데 ok:false면, 그 탭까지는 도달했지만 자동입력 자체가 실패한 것 —
+    // 클립보드에는 이미 원본 JSON이 있으니 "다시 불러오기" 버튼으로 재시도하라고 안내한다.
+    if (direct.error) {
+        if (clipboardOk) {
+            toast('네이버 블로그 글쓰기 화면이 아니라 클립보드에 복사했습니다. 그 화면에서 "레드랭크 원고 다시 불러오기"를 눌러주세요', 'ok');
+        } else {
+            toast('클립보드 복사에 실패했습니다. "본문만 복사"를 이용해주세요');
+        }
     } else {
-        toast('클립보드 복사에 실패했습니다. "본문만 복사"를 이용해주세요');
+        toast('자동 입력에 실패했습니다. 네이버 블로그 글쓰기 화면에서 "레드랭크 원고 다시 불러오기"를 눌러 재시도해주세요', 'warn');
     }
 });
 

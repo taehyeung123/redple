@@ -59,7 +59,11 @@
         <button class="style style-on" data-style="friendly">친근하게</button>
         <button class="style" data-style="professional">전문적으로</button>
         <button class="style" data-style="honest">솔직하게</button>
+        <button class="style style-tone" data-style="mytone" disabled>내 말투로</button>
       </div>
+      <p id="tone-setup-hint" class="tone-hint hidden">
+        내 말투로 쓰려면 <a href="https://www.redrank.kr/profile" target="_blank" rel="noopener">프로필에서 말투 샘플을 먼저 등록</a>해주세요
+      </p>
 
       <h2 class="sec-title mt">분량 <b id="len-val" class="len-val">1,500자</b></h2>
       <input id="length" type="range" min="500" max="3000" step="100" value="1500">
@@ -69,18 +73,21 @@
         <span>이모지 사용</span>
       </label>
 
-      <label id="tone-label" class="check">
-        <input id="tone" type="checkbox" disabled>
-        <span>내 말투로 쓰기</span>
-        <a id="tone-setup-link" class="tone-link hidden" href="https://www.redrank.kr/profile" target="_blank" rel="noopener">프로필에서 등록하기</a>
-      </label>
+      <h2 class="sec-title mt">이미지 자동 생성 <em class="opt">선택</em></h2>
+      <div class="style-row img-count-row">
+        <button class="imgcount imgcount-on" data-count="0">안 함</button>
+        <button class="imgcount" data-count="1">1장</button>
+        <button class="imgcount" data-count="2">2장</button>
+        <button class="imgcount" data-count="3">3장</button>
+      </div>
+      <p class="tone-hint">원고와 함께 AI 이미지를 만들어 에디터에 자동 첨부합니다 (장당 10코인 추가)</p>
 
       <h2 class="sec-title mt">추가 요청 <em class="opt">선택</em></h2>
       <input id="extra" type="text" placeholder="예: 가격 정보를 표로 정리해줘">
     </section>
 
     <button id="go" class="btn btn-primary btn-lg">원고 생성하기</button>
-    <p class="cost-hint">생성 1회당 1코인이 차감됩니다</p>
+    <p id="go-cost-hint" class="cost-hint">생성 1회당 1코인이 차감됩니다</p>
   </main>
 
   <!-- 결과 -->
@@ -95,6 +102,9 @@
 
       <h2 class="sec-title mt">본문 <span id="r-len" class="r-len"></span></h2>
       <div id="r-body" class="r-body"></div>
+
+      <h2 id="r-images-title" class="sec-title mt hidden">이미지</h2>
+      <div id="r-images" class="r-images"></div>
 
       <h2 class="sec-title mt">해시태그</h2>
       <div id="r-tags" class="r-tags"></div>

@@ -21,6 +21,26 @@
     const PANEL_ID = 'redple-editor-panel';
     const DRAFT_MAGIC = '__redrank_draft__';
 
+    // 레드랭크 브랜드 네온 로고(public/r-logo.svg)를 그대로 재현 — 어두운 뱃지 + 빨간 글로우 R.
+    // id는 검색 오버레이/에디터 패널 콘텐트 스크립트가 같은 페이지에 동시에 있어도
+    // 충돌하지 않도록 접두사를 붙인다.
+    const FAB_LOGO_SVG = `<svg viewBox="0 0 140 140" class="redple-fab-svg" aria-hidden="true">
+      <defs>
+        <linearGradient id="redple-fab-bg-e" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#151515"/><stop offset="50%" stop-color="#0f0f0f"/><stop offset="100%" stop-color="#1a1a1a"/>
+        </linearGradient>
+        <linearGradient id="redple-fab-red-e" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#ff3b3b"/><stop offset="100%" stop-color="#cc0000"/>
+        </linearGradient>
+        <filter id="redple-fab-glow-e" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="4" result="blur"/>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+      <rect x="0" y="0" width="140" height="140" rx="28" fill="url(#redple-fab-bg-e)" stroke="url(#redple-fab-red-e)" stroke-width="3"/>
+      <text x="70" y="85" text-anchor="middle" dominant-baseline="central" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="100" fill="url(#redple-fab-red-e)" filter="url(#redple-fab-glow-e)">R</text>
+    </svg>`;
+
     // ── 에디터 DOM 접근 (다단계 폴백) ───────────────────────────
 
     /** 제목 입력 영역 후보 */
@@ -236,8 +256,19 @@
         }
     }
 
-    /** 원고 객체(이미 파싱됨)를 실제 에디터에 채운다. 사이드패널 직접전송/클립보드 양쪽에서 공용으로 쓴다. */
-    async function applyDraftObject(draft) {
+    /**
+     * 원고 객체(이미 파싱됨)를 실제 에디터에 채운다. 사이드패널 직접전송(메시지)/클립보드
+     * 버튼클릭 양쪽에서 공용으로 쓴다.
+     *
+     * ⚠️ opts.hasGesture: 사이드패널→탭 메시지로 호출되는 경로는 이 문서(에디터 탭)에서
+     * 발생한 사용자 제스처가 아니라, 그 시점에 이 탭이 포커스를 갖고 있지 않은 경우가 많다.
+     * Chrome은 문서가 포커스 상태가 아니면 navigator.clipboard.writeText를 조용히 거부하는데,
+     * 이걸 무시하고 "클립보드에 복사했다"고 안내하면 클립보드에는 예전 값(레드랭크가 처음
+     * 써둔 원본 JSON)이 그대로 남아있어, 사용자가 그걸 그대로 본문에 붙여넣는 사고가 난다.
+     * 그래서 제스처가 보장되지 않는 경로에서는 클립보드 덮어쓰기 자체를 시도하지 않는다.
+     */
+    async function applyDraftObject(draft, opts = {}) {
+        const { hasGesture = true } = opts;
         const titleEl = getTitleEl();
         const bodyEl = getBodyEl();
 
@@ -263,34 +294,47 @@
             state.pendingTags = draft.tags;
         }
 
-        // ⚠️ 본문은 브라우저 보안 정책상 콘텐트 스크립트가 100% 자동으로 못 넣을 수 있다
-        // (스마트에디터가 신뢰된 입력만 받아들이는 경로가 있음). 그럴 때는 클립보드에
-        // 원문을 남겨서 본문 영역 클릭 후 Ctrl+V로 직접 붙여넣게 한다 — 이건 진짜 키 입력이라
-        // 에디터가 확실히 정상 처리한다. 제목이 됐어도 본문이 안 됐으면 반드시 안내한다.
-        if (draft.body && !bodyOk) {
-            try { await navigator.clipboard.writeText(draft.body); } catch { /* noop */ }
+        // 본문 자동입력이 실패했을 때 클립보드에 "본문 텍스트만" 남겨서 Ctrl+V로 직접
+        // 붙여넣을 수 있게 한다 — 단, hasGesture일 때만 시도한다(그렇지 않으면 실패를
+        // 실패로 인지하지 못하고 잘못된 안내를 하게 된다).
+        let clipboardFallbackOk = false;
+        if (draft.body && !bodyOk && hasGesture) {
+            try {
+                await navigator.clipboard.writeText(draft.body);
+                clipboardFallbackOk = true;
+            } catch { /* 포커스 없음 등 — 아래에서 실패로 안내 */ }
         }
 
         if (done.length === 0) {
-            toast('자동 입력에 실패했습니다. 본문을 클립보드에 복사했으니 본문 영역을 클릭하고 Ctrl+V로 붙여넣어 주세요.', 'error');
+            if (clipboardFallbackOk) {
+                toast('자동 입력에 실패했습니다. 본문을 클립보드에 복사했으니 본문 영역을 클릭하고 Ctrl+V로 붙여넣어 주세요.', 'error');
+            } else if (!hasGesture) {
+                toast('자동 입력에 실패했습니다. 사이드패널에서 "레드랭크 원고 다시 불러오기"를 눌러 재시도해주세요.', 'error');
+            } else {
+                toast('자동 입력과 클립보드 복사 모두 실패했습니다. 사이드패널의 "본문만 복사"로 다시 시도해주세요.', 'error');
+            }
         } else if (draft.body && !bodyOk) {
-            toast(`${done.join(' · ')} 완료. 본문은 자동입력이 안 돼 클립보드에 복사해뒀습니다 — 본문 영역 클릭 후 Ctrl+V 해주세요.${imgMsg}`, 'warn');
+            if (clipboardFallbackOk) {
+                toast(`${done.join(' · ')} 완료. 본문은 자동입력이 안 돼 클립보드에 복사해뒀습니다 — 본문 영역 클릭 후 Ctrl+V 해주세요.${imgMsg}`, 'warn');
+            } else {
+                toast(`${done.join(' · ')} 완료. 본문 자동입력에 실패했습니다 — "레드랭크 원고 다시 불러오기"로 재시도해주세요.${imgMsg}`, 'warn');
+            }
         } else {
             toast(`${done.join(' · ')} 입력 완료${imgMsg}`, 'ok');
         }
         refreshStats();
         renderTagHint();
-        return { applied: done, imageResult: imgMsg };
+        return { applied: done, titleOk, bodyOk, imageResult: imgMsg };
     }
 
-    /** 패널의 "레드랭크 원고 불러오기" 버튼 — 클립보드에서 읽어서 적용 */
+    /** 패널의 "레드랭크 원고 불러오기" 버튼 — 클립보드에서 읽어서 적용 (버튼 클릭이라 제스처 보장됨) */
     async function applyDraft() {
         const draft = await readDraftFromClipboard();
         if (!draft) {
             toast('클립보드에 레드랭크 원고가 없습니다. 레드랭크에서 "네이버 확장으로 보내기"를 먼저 눌러주세요.', 'warn');
             return;
         }
-        await applyDraftObject(draft);
+        await applyDraftObject(draft, { hasGesture: true });
     }
 
     // ── 통계/검사 ───────────────────────────────────────────────
@@ -536,7 +580,7 @@
         const fab = document.createElement('button');
         fab.id = 'redple-editor-fab';
         fab.title = '레드플 열기';
-        fab.innerHTML = '<span class="redple-fab-logo">R</span>';
+        fab.innerHTML = FAB_LOGO_SVG;
         if (isPanelExpanded()) fab.classList.add('redple-hidden');
         fab.addEventListener('click', () => setPanelExpanded(true));
         document.body.appendChild(fab);
@@ -677,8 +721,11 @@
             sendResponse({ ok: false, error: 'no-editor-in-frame' });
             return false;
         }
-        applyDraftObject(msg.draft)
-            .then((r) => sendResponse({ ok: true, ...r }))
+        // 사이드패널 버튼 클릭에서 온 메시지지만, 이 탭(에디터) 문서 자체는 포커스가 없을 수
+        // 있어 클립보드 쓰기가 막힐 수 있다 → hasGesture:false로 잘못된 "클립보드에 복사됨"
+        // 안내를 막는다.
+        applyDraftObject(msg.draft, { hasGesture: false })
+            .then((r) => sendResponse({ ok: r.titleOk || r.bodyOk, ...r }))
             .catch((e) => sendResponse({ ok: false, error: String(e?.message || e) }));
         return true; // 비동기 응답
     });

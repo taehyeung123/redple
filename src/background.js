@@ -77,6 +77,11 @@ const handlers = {
         return callRedrank('/api/ai/generate', { method: 'POST', body: payload.body, auth: true });
     },
 
+    /** AI 이미지 생성 (레드랭크 로그인 + 코인 필요, 장당 과금) */
+    async 'api.generateImage'(payload) {
+        return callRedrank('/api/ai/generate-image', { method: 'POST', body: payload.body, auth: true });
+    },
+
     /** 법적 위험 검사 (레드랭크 로그인 + 코인 필요) */
     async 'api.legalCheck'({ text, category }) {
         return callRedrank('/api/ai/legal-check', { method: 'POST', body: { text, category }, auth: true });
