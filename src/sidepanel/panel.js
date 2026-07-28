@@ -1,6 +1,7 @@
 import { api, fmtNum } from '../common/api.js';
 import { getCachedUser, getApiKey, setCachedUser } from '../common/storage.js';
 import { CATEGORY_GROUPS, CATEGORIES, findCategory } from '../common/categories.js';
+import { markdownToPlainText } from '../common/markdown.js';
 
 const chromeApi = /** @type {any} */ (globalThis.chrome);
 const $ = (id) => document.getElementById(id);
@@ -194,8 +195,15 @@ $('go').addEventListener('click', async () => {
         return;
     }
 
-    state.result = res.data;
-    renderResult(res.data);
+    // 레드랭크 원고는 ##/** 같은 마크다운 기호로 오는데, 네이버 에디터는 마크다운을
+    // 해석하지 않아 그대로 두면 기호가 그대로 노출된다 — 여기서 한 번만 정리해두고
+    // 화면 표시·에디터 전송 모두 이 정리된 텍스트를 쓴다.
+    state.result = {
+        ...res.data,
+        title: markdownToPlainText(res.data.title || ''),
+        content: markdownToPlainText(res.data.content || ''),
+    };
+    renderResult(state.result);
     checkAccess(); // 코인 잔액 갱신
 });
 
@@ -256,18 +264,24 @@ $('send-editor').addEventListener('click', async () => {
         ts: Date.now(),
     };
 
-    // 1순위: 지금 보고 있는 네이버 블로그 글쓰기 탭에 바로 적용 (클립보드 왕복 없이 한 번에)
+    // 클립보드에는 결과와 무관하게 항상 먼저 복사해둔다 — 자동입력이 일부만 되거나
+    // 실패했을 때 "레드랭크 원고 다시 불러오기"로 재시도할 수 있는 안전망이 항상 있어야 한다.
+    let clipboardOk = false;
+    try {
+        await navigator.clipboard.writeText(JSON.stringify(payload));
+        clipboardOk = true;
+    } catch { /* 권한 거부 등 — 아래에서 direct 결과로만 안내 */ }
+
+    // 지금 보고 있는 네이버 블로그 글쓰기 탭에 바로 적용 (탭이 맞으면 클립보드 없이도 즉시 채워짐)
     const direct = await sendToActiveTab(payload);
     if (direct.ok) {
-        toast(`${(direct.applied || []).join(' · ') || '원고'} 자동 입력 완료!`, 'ok');
+        toast(`${(direct.applied || []).join(' · ') || '원고'} 자동 입력 완료! 안 채워진 부분이 있으면 "레드랭크 원고 다시 불러오기"로 재시도하세요`, 'ok');
         return;
     }
 
-    // 폴백: 블로그 글쓰기 탭이 아니거나 패널이 아직 안 떠서 못 받은 경우 — 클립보드로
-    try {
-        await navigator.clipboard.writeText(JSON.stringify(payload));
+    if (clipboardOk) {
         toast('네이버 블로그 글쓰기 화면이 아니라 클립보드에 복사했습니다. 그 화면에서 "레드랭크 원고 다시 불러오기"를 눌러주세요', 'ok');
-    } catch {
+    } else {
         toast('클립보드 복사에 실패했습니다. "본문만 복사"를 이용해주세요');
     }
 });

@@ -98,10 +98,81 @@
         }
     }
 
-    /** 여러 문단을 본문에 순차 입력 (문단 사이 개행 유지) */
+    /** 지금 본문 영역에 실제로 들어가 있는 글자 수(공백 제외) — 삽입 성공 여부 실측용 */
+    function measureBodyLength() {
+        const root = document.querySelector('.se-main-container') || document.querySelector('#editorContainer') || document.body;
+        return (root.innerText || root.textContent || '').replace(/\s/g, '').length;
+    }
+
+    function selectAllIn(el) {
+        el.focus();
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+    }
+
+    function paragraphsOf(body) {
+        return body.split(/\n+/).map((p) => p.trim()).filter(Boolean);
+    }
+
+    /**
+     * 본문 삽입 — 스마트에디터 ONE은 문단마다 별도 컴포넌트(.se-component.se-text +
+     * 그 옆의 __se_module_data 스크립트로 내부 문서 모델을 관리)로 이루어져 있어서,
+     * 단순히 긴 텍스트를 하나로 밀어넣으면 첫 컴포넌트 하나에만 들어가고 나머지는
+     * 컴포넌트가 안 생겨서 유실된다. 세 가지 방식을 순서대로 시도하고, 매 시도 후
+     * 실제로 몇 글자가 들어갔는지 DOM에서 직접 재보고 판단한다(이벤트가 "처리됨"으로
+     * 응답해도 실제로는 거의 안 들어가는 경우가 있었기 때문).
+     */
     function insertBody(el, body) {
-        // 스마트에디터는 \n을 문단 분리로 처리한다. paste 경로가 이를 알아서 나눠준다.
-        return insertText(el, body);
+        if (!el) return false;
+        const before = measureBodyLength();
+        const paragraphs = paragraphsOf(body);
+        const expected = body.replace(/\s/g, '').length;
+        const enough = () => measureBodyLength() - before >= expected * 0.5;
+
+        // 1차: HTML paste — 문단마다 <p>로 감싸서 보낸다. 리치에디터는 붙여넣기 파이프라인이
+        // 여러 블록짜리 HTML을 여러 컴포넌트로 나누도록 더 잘 만들어져 있는 경우가 많다.
+        try {
+            selectAllIn(el);
+            document.execCommand('delete');
+            const html = paragraphs.map((p) => `<p>${p.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</p>`).join('');
+            const dt = new DataTransfer();
+            dt.setData('text/plain', body);
+            dt.setData('text/html', html);
+            el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
+            el.dispatchEvent(new Event('input', { bubbles: true }));
+        } catch { /* 다음 시도로 */ }
+        if (enough()) return true;
+
+        // 2차: execCommand('insertHTML') — paste 이벤트 자체를 안 받아주는 경우의 대안
+        try {
+            selectAllIn(el);
+            document.execCommand('delete');
+            const html = paragraphs.map((p) => `<p>${p.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</p>`).join('');
+            document.execCommand('insertHTML', false, html);
+            el.dispatchEvent(new Event('input', { bubbles: true }));
+        } catch { /* 다음 시도로 */ }
+        if (enough()) return true;
+
+        // 3차: 타이핑 시뮬레이션 — 문단 입력 → Enter → 다음 문단, 실제 사용자 입력 패턴을 흉내
+        try {
+            selectAllIn(el);
+            document.execCommand('delete');
+            for (let i = 0; i < paragraphs.length; i++) {
+                document.execCommand('insertText', false, paragraphs[i]);
+                if (i < paragraphs.length - 1) document.execCommand('insertParagraph');
+            }
+            el.dispatchEvent(new Event('input', { bubbles: true }));
+        } catch { /* 아래 최종 판정으로 */ }
+
+        // ⚠️ 콘텐트 스크립트가 보내는 이벤트는 전부 isTrusted:false라, 브라우저가 실제
+        // 키 입력/붙여넣기에만 허용하는 내부 동작을 트리거 못 할 수 있다. 세 방식 다
+        // 실패하면 이 함수는 false를 반환하고, 호출부가 클립보드에 원문을 남겨 사용자가
+        // 본문을 클릭하고 Ctrl+V로 직접 붙여넣을 수 있게 한다 — 이건 실제 키 입력이라
+        // 에디터가 100% 정상 처리한다.
+        return enough();
     }
 
     // ── 이미지 첨부 ─────────────────────────────────────────────
@@ -171,8 +242,10 @@
         const bodyEl = getBodyEl();
 
         let done = [];
-        if (draft.title && titleEl && insertText(titleEl, draft.title)) done.push('제목');
-        if (draft.body && bodyEl && insertBody(bodyEl, draft.body)) done.push('본문');
+        const titleOk = !!(draft.title && titleEl && insertText(titleEl, draft.title));
+        if (titleOk) done.push('제목');
+        const bodyOk = !!(draft.body && bodyEl && insertBody(bodyEl, draft.body));
+        if (bodyOk) done.push('본문');
 
         // 이미지
         let imgMsg = '';
@@ -190,9 +263,18 @@
             state.pendingTags = draft.tags;
         }
 
+        // ⚠️ 본문은 브라우저 보안 정책상 콘텐트 스크립트가 100% 자동으로 못 넣을 수 있다
+        // (스마트에디터가 신뢰된 입력만 받아들이는 경로가 있음). 그럴 때는 클립보드에
+        // 원문을 남겨서 본문 영역 클릭 후 Ctrl+V로 직접 붙여넣게 한다 — 이건 진짜 키 입력이라
+        // 에디터가 확실히 정상 처리한다. 제목이 됐어도 본문이 안 됐으면 반드시 안내한다.
+        if (draft.body && !bodyOk) {
+            try { await navigator.clipboard.writeText(draft.body); } catch { /* noop */ }
+        }
+
         if (done.length === 0) {
-            toast('자동 입력에 실패했습니다. 본문을 클립보드에 복사했으니 직접 붙여넣어 주세요.', 'error');
-            try { await navigator.clipboard.writeText(draft.body || ''); } catch { /* noop */ }
+            toast('자동 입력에 실패했습니다. 본문을 클립보드에 복사했으니 본문 영역을 클릭하고 Ctrl+V로 붙여넣어 주세요.', 'error');
+        } else if (draft.body && !bodyOk) {
+            toast(`${done.join(' · ')} 완료. 본문은 자동입력이 안 돼 클립보드에 복사해뒀습니다 — 본문 영역 클릭 후 Ctrl+V 해주세요.${imgMsg}`, 'warn');
         } else {
             toast(`${done.join(' · ')} 입력 완료${imgMsg}`, 'ok');
         }
