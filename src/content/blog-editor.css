@@ -70,54 +70,64 @@
 
 #redple-editor-panel.redple-hidden { display: none; }
 
-/* ── 네온 로고 버튼(FAB) — 기본 상태, 클릭하면 패널이 펼쳐진다. 드래그로 위치 이동 가능 ── */
+/* ── 네온 로고 버튼(FAB) — 기본 상태, 클릭하면 패널이 펼쳐진다. 드래그로 위치 이동 가능 ──
+   ⚠️ 네이버 페이지 자체의 button/svg/img 전역 리셋(예: 반응형 이미지용 height:auto !important
+   같은 규칙)이 우리 스타일을 덮어써 가로세로가 어긋나 보일 수 있다. all:unset으로 상속/충돌을
+   완전히 끊고 필요한 값만 !important로 다시 못박아, 페이지 CSS가 뭘 하든 정사각형을 보장한다. */
 #redple-editor-fab {
-    position: fixed;
-    top: 76px;
-    right: 16px;
-    z-index: 2147483000;
-    width: 56px;
-    height: 56px;
-    aspect-ratio: 1 / 1;
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-    border: none;
-    border-radius: 50%;
-    background: none;
-    box-shadow: 0 4px 18px rgba(255, 59, 59, 0.35);
-    cursor: grab;
-    -webkit-appearance: none;
-    appearance: none;
-    outline: none;
-    line-height: 0;
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    all: unset;
+    box-sizing: border-box !important;
+    position: fixed !important;
+    top: 76px !important;
+    left: auto !important;
+    right: 16px !important;
+    bottom: auto !important;
+    z-index: 2147483000 !important;
+    width: 56px !important;
+    height: 56px !important;
+    min-width: 56px !important;
+    min-height: 56px !important;
+    max-width: 56px !important;
+    max-height: 56px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    border-radius: 50% !important;
+    background: none !important;
+    box-shadow: 0 4px 18px rgba(255, 59, 59, 0.35) !important;
+    cursor: grab !important;
+    line-height: 0 !important;
+    flex-shrink: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
     transition: transform 0.15s, box-shadow 0.15s;
     touch-action: none;
 }
 
 #redple-editor-fab:hover {
     transform: scale(1.08);
-    box-shadow: 0 4px 26px rgba(255, 59, 59, 0.55);
+    box-shadow: 0 4px 26px rgba(255, 59, 59, 0.55) !important;
 }
-#redple-editor-fab.redple-dragging { cursor: grabbing; transition: none; }
-#redple-editor-fab.redple-hidden { display: none; }
+#redple-editor-fab.redple-dragging { cursor: grabbing !important; transition: none; }
+#redple-editor-fab.redple-hidden { display: none !important; }
 
 #redple-editor-fab .redple-fab-circle {
-    display: block;
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    overflow: hidden;
+    all: unset;
+    box-sizing: border-box !important;
+    display: block !important;
+    width: 56px !important;
+    height: 56px !important;
+    border-radius: 50% !important;
+    overflow: hidden !important;
 }
 
 #redple-editor-fab .redple-fab-svg {
-    width: 100%;
-    height: 100%;
-    display: block;
+    display: block !important;
+    width: 56px !important;
+    height: 56px !important;
+    max-width: none !important;
+    max-height: none !important;
 }
 
 #redple-editor-panel .redple-body {

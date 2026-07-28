@@ -24,7 +24,7 @@
     // 레드랭크 브랜드 네온 로고(public/r-logo.svg)를 그대로 재현 — 어두운 뱃지 + 빨간 글로우 R.
     // id는 검색 오버레이/에디터 패널 콘텐트 스크립트가 같은 페이지에 동시에 있어도
     // 충돌하지 않도록 접두사를 붙인다.
-    const FAB_LOGO_SVG = `<svg viewBox="0 0 140 140" class="redple-fab-svg" aria-hidden="true">
+    const FAB_LOGO_SVG = `<svg viewBox="0 0 140 140" width="56" height="56" preserveAspectRatio="xMidYMid meet" class="redple-fab-svg" aria-hidden="true">
       <defs>
         <linearGradient id="redple-fab-bg-e" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stop-color="#151515"/><stop offset="50%" stop-color="#0f0f0f"/><stop offset="100%" stop-color="#1a1a1a"/>
