@@ -76,7 +76,7 @@
 
 #redple-search-card.redple-hidden { display: none; }
 
-/* ── 네온 로고 버튼(FAB) — 기본 상태, 클릭하면 카드가 펼쳐진다 ── */
+/* ── 네온 로고 버튼(FAB) — 기본 상태, 클릭하면 카드가 펼쳐진다. 드래그로 위치 이동 가능 ── */
 #redple-search-fab {
     position: fixed;
     top: 84px;
@@ -84,24 +84,42 @@
     z-index: 2147483000;
     width: 54px;
     height: 54px;
+    aspect-ratio: 1 / 1;
+    box-sizing: border-box;
+    margin: 0;
     padding: 0;
     border: none;
-    border-radius: 12px;
+    border-radius: 50%;
     background: none;
     box-shadow: 0 4px 18px rgba(255, 59, 59, 0.35);
-    cursor: pointer;
+    cursor: grab;
+    -webkit-appearance: none;
+    appearance: none;
+    outline: none;
+    line-height: 0;
+    flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: center;
     animation: redple-in 0.22s ease;
     transition: transform 0.15s, box-shadow 0.15s;
+    touch-action: none;
 }
 
 #redple-search-fab:hover {
     transform: scale(1.08);
     box-shadow: 0 4px 26px rgba(255, 59, 59, 0.55);
 }
+#redple-search-fab.redple-dragging { cursor: grabbing; transition: none; }
 #redple-search-fab.redple-hidden { display: none; }
+
+#redple-search-fab .redple-fab-circle {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    overflow: hidden;
+}
 
 #redple-search-fab .redple-fab-svg {
     width: 100%;

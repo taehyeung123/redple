@@ -125,17 +125,75 @@
         return '<span class="redple-badge redple-badge-red">경쟁 높음</span>';
     }
 
-    // ── FAB(원형 버튼) ────────────────────────────────────────────
+    // ── FAB(네온 로고 버튼) ──────────────────────────────────────
+
+    /** FAB를 드래그로 자유롭게 옮길 수 있게 한다. 실제로 움직인 경우엔 클릭(펼치기)을 취소한다. */
+    function makeFabDraggable(fab, storageKey, onClick) {
+        function clamp(top, left) {
+            const w = fab.offsetWidth || 54, h = fab.offsetHeight || 54;
+            const maxTop = Math.max(4, window.innerHeight - h - 4);
+            const maxLeft = Math.max(4, window.innerWidth - w - 4);
+            return { top: Math.min(Math.max(4, top), maxTop), left: Math.min(Math.max(4, left), maxLeft) };
+        }
+        function applyPos(top, left) {
+            const c = clamp(top, left);
+            fab.style.top = `${c.top}px`;
+            fab.style.left = `${c.left}px`;
+            fab.style.right = 'auto';
+        }
+
+        chromeApi.storage.local.get(storageKey).then((res) => {
+            const pos = res && res[storageKey];
+            if (pos && typeof pos.top === 'number' && typeof pos.left === 'number') applyPos(pos.top, pos.left);
+        });
+
+        let dragging = false, moved = false, startX = 0, startY = 0, startTop = 0, startLeft = 0;
+
+        fab.addEventListener('pointerdown', (e) => {
+            if (e.button !== 0) return;
+            dragging = true;
+            moved = false;
+            const rect = fab.getBoundingClientRect();
+            startX = e.clientX; startY = e.clientY;
+            startTop = rect.top; startLeft = rect.left;
+            fab.setPointerCapture(e.pointerId);
+            fab.classList.add('redple-dragging');
+        });
+
+        fab.addEventListener('pointermove', (e) => {
+            if (!dragging) return;
+            const dx = e.clientX - startX, dy = e.clientY - startY;
+            if (!moved && (Math.abs(dx) > 4 || Math.abs(dy) > 4)) moved = true;
+            if (moved) applyPos(startTop + dy, startLeft + dx);
+        });
+
+        function endDrag() {
+            if (!dragging) return;
+            dragging = false;
+            fab.classList.remove('redple-dragging');
+            if (moved) {
+                const rect = fab.getBoundingClientRect();
+                chromeApi.storage.local.set({ [storageKey]: { top: rect.top, left: rect.left } });
+            }
+        }
+        fab.addEventListener('pointerup', endDrag);
+        fab.addEventListener('pointercancel', endDrag);
+
+        fab.addEventListener('click', () => {
+            if (moved) { moved = false; return; } // 드래그 후 발생하는 클릭은 펼치기로 이어지지 않게 막는다
+            onClick();
+        });
+    }
 
     function ensureFab() {
         let fab = document.getElementById(FAB_ID);
         if (fab) return fab;
         fab = document.createElement('button');
         fab.id = FAB_ID;
-        fab.title = '레드플 키워드 분석 열기';
-        fab.innerHTML = FAB_LOGO_SVG + '<span class="redple-fab-dot"></span>';
-        fab.addEventListener('click', () => setExpanded(true));
+        fab.title = '레드플 키워드 분석 열기 (드래그해서 위치를 옮길 수 있어요)';
+        fab.innerHTML = `<span class="redple-fab-circle">${FAB_LOGO_SVG}</span><span class="redple-fab-dot"></span>`;
         document.body.appendChild(fab);
+        makeFabDraggable(fab, 'redpleFabPosSearch', () => setExpanded(true));
         return fab;
     }
 

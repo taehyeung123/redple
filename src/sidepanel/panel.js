@@ -266,23 +266,34 @@ $('go').addEventListener('click', async () => {
 
         const images = [];
         let failCount = 0;
+        let firstError = '';
         for (const r of results) {
             const im = r.ok ? r.data?.images?.[0] : null;
-            if (im) images.push({ dataUrl: `data:${im.mimeType || 'image/png'};base64,${im.image}` });
-            else failCount++;
+            if (im) {
+                images.push({ dataUrl: `data:${im.mimeType || 'image/png'};base64,${im.image}` });
+            } else {
+                failCount++;
+                if (!firstError) {
+                    firstError = r.needKey || r.needLogin ? '레드랭크 계정 연결이 만료됐습니다' : (r.error || '');
+                }
+            }
         }
         state.result.images = images;
 
         if (images.length === 0) {
-            toast('이미지 생성에 실패했습니다. 원고는 정상적으로 만들어졌습니다.', 'warn');
+            toast(`이미지 생성에 실패했습니다${firstError ? ' — ' + firstError : ''}. 원고는 정상적으로 만들어졌습니다.`, 'warn');
         } else if (failCount > 0) {
-            toast(`이미지 ${images.length}장 생성 완료 (${failCount}장 실패). 원고는 정상적으로 만들어졌습니다.`, 'warn');
+            toast(`이미지 ${images.length}장 생성 완료 (${failCount}장 실패${firstError ? ': ' + firstError : ''})`, 'warn');
         }
     }
 
     $('loading').classList.add('hidden');
     renderResult(state.result);
     checkAccess(); // 코인 잔액 갱신
+
+    // 이미 네이버 블로그 글쓰기 탭을 보고 있었다면, 버튼을 누르지 않아도 바로 채워본다
+    // (실패해도 조용히 넘어간다 — 아래 "네이버 에디터로 보내기" 버튼이 항상 재시도 수단으로 남아있음)
+    sendDraftToEditor(state.result, { auto: true });
 });
 
 function renderResult(r) {
@@ -295,7 +306,25 @@ function renderResult(r) {
 
     const images = Array.isArray(r.images) ? r.images : [];
     $('r-images-title').classList.toggle('hidden', images.length === 0);
-    $('r-images').innerHTML = images.map((im) => `<img src="${im.dataUrl}" alt="생성된 이미지">`).join('');
+    $('r-images-hint').classList.toggle('hidden', images.length === 0);
+    $('r-images').innerHTML = images.map((im, i) => `
+      <div class="r-image-item">
+        <img src="${im.dataUrl}" alt="생성된 이미지 ${i + 1}">
+        <button class="r-image-copy" data-idx="${i}" title="이 사진을 클립보드에 복사">복사</button>
+      </div>`).join('');
+    $('r-images').querySelectorAll('.r-image-copy').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+            const im = images[Number(btn.dataset.idx)];
+            if (!im) return;
+            try {
+                const blob = await (await fetch(im.dataUrl)).blob();
+                await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
+                toast('사진을 클립보드에 복사했습니다 — 에디터에서 원하는 위치를 클릭하고 Ctrl+V 해주세요', 'ok');
+            } catch {
+                toast('사진 복사에 실패했습니다', 'err');
+            }
+        });
+    });
 
     const tags = Array.isArray(r.hashtags) ? r.hashtags : [];
     $('r-tags').innerHTML = tags.map((t) => `<span>#${String(t).replace(/^#/, '')}</span>`).join('');
@@ -329,8 +358,14 @@ function sendToActiveTab(draft) {
     });
 }
 
-$('send-editor').addEventListener('click', async () => {
-    const r = state.result;
+/**
+ * 원고를 지금 활성 탭(네이버 블로그 글쓰기 화면)에 적용한다.
+ * opts.auto: 원고 생성 직후 버튼 클릭 없이 자동으로 시도하는 경우. 이땐 이 클릭에서 비롯된
+ * 제스처가 없어(20~40초짜리 생성 대기를 거쳤으므로) 클립보드 쓰기가 막힐 수 있어 시도하지
+ * 않고, 실패해도 조용히 넘어간다 — "네이버 에디터로 보내기" 버튼이 항상 재시도 수단으로 남는다.
+ */
+async function sendDraftToEditor(r, opts = {}) {
+    const { auto = false } = opts;
     if (!r) return;
 
     const payload = {
@@ -346,34 +381,39 @@ $('send-editor').addEventListener('click', async () => {
         ts: Date.now(),
     };
 
-    // 클립보드에는 결과와 무관하게 항상 먼저 복사해둔다 — 자동입력이 일부만 되거나
-    // 실패했을 때 "레드랭크 원고 다시 불러오기"로 재시도할 수 있는 안전망이 항상 있어야 한다.
-    let clipboardOk = false;
-    try {
-        await navigator.clipboard.writeText(JSON.stringify(payload));
-        clipboardOk = true;
-    } catch { /* 권한 거부 등 — 아래에서 direct 결과로만 안내 */ }
-
-    // 지금 보고 있는 네이버 블로그 글쓰기 탭에 바로 적용 (탭이 맞으면 클립보드 없이도 즉시 채워짐)
     const direct = await sendToActiveTab(payload);
+
     if (direct.ok) {
-        toast(`${(direct.applied || []).join(' · ') || '원고'} 자동 입력 완료! 안 채워진 부분이 있으면 "레드랭크 원고 다시 불러오기"로 재시도하세요`, 'ok');
+        toast(`${(direct.applied || []).join(' · ') || '원고'} 자동 입력 완료!`, 'ok');
         return;
     }
 
-    // direct.error가 있으면 응답 자체가 안 온 것(다른 탭/에디터 준비 전) — 클립보드 안내가 맞다.
-    // error가 없는데 ok:false면, 그 탭까지는 도달했지만 자동입력 자체가 실패한 것 —
-    // 클립보드에는 이미 원본 JSON이 있으니 "다시 불러오기" 버튼으로 재시도하라고 안내한다.
+    if (auto) return;
+
+    // direct.error가 있으면 응답 자체가 안 온 것(다른 탭/에디터 준비 전) — 원본 JSON을 클립보드에
+    // 남겨 그 화면에서 "다시 불러오기"로 재시도할 수 있게 한다.
     if (direct.error) {
-        if (clipboardOk) {
+        try {
+            await navigator.clipboard.writeText(JSON.stringify(payload));
             toast('네이버 블로그 글쓰기 화면이 아니라 클립보드에 복사했습니다. 그 화면에서 "레드랭크 원고 다시 불러오기"를 눌러주세요', 'ok');
-        } else {
+        } catch {
             toast('클립보드 복사에 실패했습니다. "본문만 복사"를 이용해주세요');
         }
-    } else {
-        toast('자동 입력에 실패했습니다. 네이버 블로그 글쓰기 화면에서 "레드랭크 원고 다시 불러오기"를 눌러 재시도해주세요', 'warn');
+        return;
     }
-});
+
+    // 에디터 탭까지는 도달했지만 본문 자동입력이 실패한 경우 — "다시 불러오기"를 한 번 더
+    // 누르게 하지 않고, 지금 클릭의 제스처로 바로 본문을 클립보드에 남긴다(한 단계로 줄임).
+    const titleNote = direct.titleOk ? '제목은 채워졌습니다. ' : '';
+    try {
+        await navigator.clipboard.writeText(payload.body);
+        toast(`${titleNote}본문 자동입력에 실패해 클립보드에 복사했습니다 — 본문 영역을 클릭하고 Ctrl+V 해주세요`, 'warn');
+    } catch {
+        toast(`${titleNote}본문 자동입력과 클립보드 복사 모두 실패했습니다. "본문만 복사" 버튼을 이용해주세요`, 'warn');
+    }
+}
+
+$('send-editor').addEventListener('click', () => sendDraftToEditor(state.result, { auto: false }));
 
 $('copy-body').addEventListener('click', async () => {
     const r = state.result;

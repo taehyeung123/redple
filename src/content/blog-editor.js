@@ -268,7 +268,7 @@
      * 그래서 제스처가 보장되지 않는 경로에서는 클립보드 덮어쓰기 자체를 시도하지 않는다.
      */
     async function applyDraftObject(draft, opts = {}) {
-        const { hasGesture = true } = opts;
+        const { hasGesture = true, silent = false } = opts;
         const titleEl = getTitleEl();
         const bodyEl = getBodyEl();
 
@@ -305,22 +305,28 @@
             } catch { /* 포커스 없음 등 — 아래에서 실패로 안내 */ }
         }
 
-        if (done.length === 0) {
-            if (clipboardFallbackOk) {
-                toast('자동 입력에 실패했습니다. 본문을 클립보드에 복사했으니 본문 영역을 클릭하고 Ctrl+V로 붙여넣어 주세요.', 'error');
-            } else if (!hasGesture) {
-                toast('자동 입력에 실패했습니다. 사이드패널에서 "레드랭크 원고 다시 불러오기"를 눌러 재시도해주세요.', 'error');
+        // silent: 사이드패널→탭 메시지 경로에서 호출됐을 때. 이 경우 사이드패널이 결과를 보고
+        // 자기 화면에서 직접 클립보드 폴백·안내를 처리하므로, 이 페이지에 중복/모순되는
+        // 안내(예: 여기서는 "다시 불러오기 누르라"고 하는데 사이드패널은 이미 클립보드에
+        // 복사해놓고 "Ctrl+V 하라"고 하는 식)를 띄우지 않는다.
+        if (!silent) {
+            if (done.length === 0) {
+                if (clipboardFallbackOk) {
+                    toast('자동 입력에 실패했습니다. 본문을 클립보드에 복사했으니 본문 영역을 클릭하고 Ctrl+V로 붙여넣어 주세요.', 'error');
+                } else if (!hasGesture) {
+                    toast('자동 입력에 실패했습니다. 사이드패널에서 "레드랭크 원고 다시 불러오기"를 눌러 재시도해주세요.', 'error');
+                } else {
+                    toast('자동 입력과 클립보드 복사 모두 실패했습니다. 사이드패널의 "본문만 복사"로 다시 시도해주세요.', 'error');
+                }
+            } else if (draft.body && !bodyOk) {
+                if (clipboardFallbackOk) {
+                    toast(`${done.join(' · ')} 완료. 본문은 자동입력이 안 돼 클립보드에 복사해뒀습니다 — 본문 영역 클릭 후 Ctrl+V 해주세요.${imgMsg}`, 'warn');
+                } else {
+                    toast(`${done.join(' · ')} 완료. 본문 자동입력에 실패했습니다 — "레드랭크 원고 다시 불러오기"로 재시도해주세요.${imgMsg}`, 'warn');
+                }
             } else {
-                toast('자동 입력과 클립보드 복사 모두 실패했습니다. 사이드패널의 "본문만 복사"로 다시 시도해주세요.', 'error');
+                toast(`${done.join(' · ')} 입력 완료${imgMsg}`, 'ok');
             }
-        } else if (draft.body && !bodyOk) {
-            if (clipboardFallbackOk) {
-                toast(`${done.join(' · ')} 완료. 본문은 자동입력이 안 돼 클립보드에 복사해뒀습니다 — 본문 영역 클릭 후 Ctrl+V 해주세요.${imgMsg}`, 'warn');
-            } else {
-                toast(`${done.join(' · ')} 완료. 본문 자동입력에 실패했습니다 — "레드랭크 원고 다시 불러오기"로 재시도해주세요.${imgMsg}`, 'warn');
-            }
-        } else {
-            toast(`${done.join(' · ')} 입력 완료${imgMsg}`, 'ok');
         }
         refreshStats();
         renderTagHint();
@@ -575,15 +581,73 @@
         document.getElementById(PANEL_ID)?.classList.toggle('redple-hidden', !expanded);
     }
 
+    /** FAB를 드래그로 자유롭게 옮길 수 있게 한다. 실제로 움직인 경우엔 클릭(펼치기)을 취소한다. */
+    function makeFabDraggable(fab, storageKey, onClick) {
+        function clamp(top, left) {
+            const w = fab.offsetWidth || 56, h = fab.offsetHeight || 56;
+            const maxTop = Math.max(4, window.innerHeight - h - 4);
+            const maxLeft = Math.max(4, window.innerWidth - w - 4);
+            return { top: Math.min(Math.max(4, top), maxTop), left: Math.min(Math.max(4, left), maxLeft) };
+        }
+        function applyPos(top, left) {
+            const c = clamp(top, left);
+            fab.style.top = `${c.top}px`;
+            fab.style.left = `${c.left}px`;
+            fab.style.right = 'auto';
+        }
+
+        chromeApi.storage.local.get(storageKey).then((res) => {
+            const pos = res && res[storageKey];
+            if (pos && typeof pos.top === 'number' && typeof pos.left === 'number') applyPos(pos.top, pos.left);
+        });
+
+        let dragging = false, moved = false, startX = 0, startY = 0, startTop = 0, startLeft = 0;
+
+        fab.addEventListener('pointerdown', (e) => {
+            if (e.button !== 0) return;
+            dragging = true;
+            moved = false;
+            const rect = fab.getBoundingClientRect();
+            startX = e.clientX; startY = e.clientY;
+            startTop = rect.top; startLeft = rect.left;
+            fab.setPointerCapture(e.pointerId);
+            fab.classList.add('redple-dragging');
+        });
+
+        fab.addEventListener('pointermove', (e) => {
+            if (!dragging) return;
+            const dx = e.clientX - startX, dy = e.clientY - startY;
+            if (!moved && (Math.abs(dx) > 4 || Math.abs(dy) > 4)) moved = true;
+            if (moved) applyPos(startTop + dy, startLeft + dx);
+        });
+
+        function endDrag() {
+            if (!dragging) return;
+            dragging = false;
+            fab.classList.remove('redple-dragging');
+            if (moved) {
+                const rect = fab.getBoundingClientRect();
+                chromeApi.storage.local.set({ [storageKey]: { top: rect.top, left: rect.left } });
+            }
+        }
+        fab.addEventListener('pointerup', endDrag);
+        fab.addEventListener('pointercancel', endDrag);
+
+        fab.addEventListener('click', () => {
+            if (moved) { moved = false; return; }
+            onClick();
+        });
+    }
+
     function ensurePanelFab() {
         if (document.getElementById('redple-editor-fab')) return;
         const fab = document.createElement('button');
         fab.id = 'redple-editor-fab';
-        fab.title = '레드플 열기';
-        fab.innerHTML = FAB_LOGO_SVG;
+        fab.title = '레드플 열기 (드래그해서 위치를 옮길 수 있어요)';
+        fab.innerHTML = `<span class="redple-fab-circle">${FAB_LOGO_SVG}</span>`;
         if (isPanelExpanded()) fab.classList.add('redple-hidden');
-        fab.addEventListener('click', () => setPanelExpanded(true));
         document.body.appendChild(fab);
+        makeFabDraggable(fab, 'redpleFabPosEditor', () => setPanelExpanded(true));
     }
 
     function buildPanel() {
@@ -723,8 +787,8 @@
         }
         // 사이드패널 버튼 클릭에서 온 메시지지만, 이 탭(에디터) 문서 자체는 포커스가 없을 수
         // 있어 클립보드 쓰기가 막힐 수 있다 → hasGesture:false로 잘못된 "클립보드에 복사됨"
-        // 안내를 막는다.
-        applyDraftObject(msg.draft, { hasGesture: false })
+        // 안내를 막는다. silent:true — 안내는 사이드패널이 응답을 보고 직접 처리한다.
+        applyDraftObject(msg.draft, { hasGesture: false, silent: true })
             .then((r) => sendResponse({ ok: r.titleOk || r.bodyOk, ...r }))
             .catch((e) => sendResponse({ ok: false, error: String(e?.message || e) }));
         return true; // 비동기 응답

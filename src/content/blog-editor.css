@@ -70,7 +70,7 @@
 
 #redple-editor-panel.redple-hidden { display: none; }
 
-/* ── 네온 로고 버튼(FAB) — 기본 상태, 클릭하면 패널이 펼쳐진다 ── */
+/* ── 네온 로고 버튼(FAB) — 기본 상태, 클릭하면 패널이 펼쳐진다. 드래그로 위치 이동 가능 ── */
 #redple-editor-fab {
     position: fixed;
     top: 76px;
@@ -78,23 +78,41 @@
     z-index: 2147483000;
     width: 56px;
     height: 56px;
+    aspect-ratio: 1 / 1;
+    box-sizing: border-box;
+    margin: 0;
     padding: 0;
     border: none;
-    border-radius: 12px;
+    border-radius: 50%;
     background: none;
     box-shadow: 0 4px 18px rgba(255, 59, 59, 0.35);
-    cursor: pointer;
+    cursor: grab;
+    -webkit-appearance: none;
+    appearance: none;
+    outline: none;
+    line-height: 0;
+    flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: transform 0.15s, box-shadow 0.15s;
+    touch-action: none;
 }
 
 #redple-editor-fab:hover {
     transform: scale(1.08);
     box-shadow: 0 4px 26px rgba(255, 59, 59, 0.55);
 }
+#redple-editor-fab.redple-dragging { cursor: grabbing; transition: none; }
 #redple-editor-fab.redple-hidden { display: none; }
+
+#redple-editor-fab .redple-fab-circle {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    overflow: hidden;
+}
 
 #redple-editor-fab .redple-fab-svg {
     width: 100%;
