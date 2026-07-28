@@ -198,6 +198,33 @@ function buildImagePrompts(result, mainKeyword, count) {
     return prompts;
 }
 
+function escHtml(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+/**
+ * 본문 + 사진을 한 번에 클립보드로 옮기기 위한 HTML을 만든다. 소제목(outline)마다 이미지를
+ * buildImagePrompts와 같은 순서로 매칭했으니(images[0]=대표, images[1+]=outline[i]), 여기서도
+ * 그 소제목 문단을 만나는 지점 바로 뒤에 해당 이미지를 끼워 넣어 "제자리"에 오게 한다.
+ * outline 텍스트가 본문 문단과 정확히 일치하지 않는 경우(AI가 약간 다르게 썼을 때)엔 매칭이
+ * 안 될 수 있어 — 그럴 땐 그 섹션 이미지를 못 끼워 넣고 건너뛴다(전체 실패로 이어지진 않음).
+ */
+function buildBodyHtmlWithImages(content, outline, images) {
+    const paras = content.split(/\n+/).map((p) => p.trim()).filter(Boolean);
+    const sections = Array.isArray(outline) ? outline.filter(Boolean) : [];
+    const sectionImages = images.slice(1); // images[0]은 대표 이미지
+
+    let html = images[0] ? `<p><img src="${images[0].dataUrl}" alt="" style="max-width:100%"></p>` : '';
+    for (const p of paras) {
+        html += `<p>${escHtml(p)}</p>`;
+        const secIdx = sections.findIndex((h) => p === h || p.startsWith(h) || h.startsWith(p));
+        if (secIdx !== -1 && sectionImages[secIdx]) {
+            html += `<p><img src="${sectionImages[secIdx].dataUrl}" alt="" style="max-width:100%"></p>`;
+        }
+    }
+    return html;
+}
+
 $('go').addEventListener('click', async () => {
     const mainKeyword = $('main-kw').value.trim();
     if (!mainKeyword) { toast('메인 키워드를 입력해주세요'); return; }
@@ -307,6 +334,8 @@ function renderResult(r) {
     const images = Array.isArray(r.images) ? r.images : [];
     $('r-images-title').classList.toggle('hidden', images.length === 0);
     $('r-images-hint').classList.toggle('hidden', images.length === 0);
+    $('copy-body-images').classList.toggle('hidden', images.length === 0);
+    $('copy-body-images-hint').classList.toggle('hidden', images.length === 0);
     $('r-images').innerHTML = images.map((im, i) => `
       <div class="r-image-item">
         <img src="${im.dataUrl}" alt="생성된 이미지 ${i + 1}">
@@ -423,6 +452,24 @@ $('copy-body').addEventListener('click', async () => {
         toast('본문을 복사했습니다', 'ok');
     } catch {
         toast('클립보드 복사에 실패했습니다');
+    }
+});
+
+$('copy-body-images').addEventListener('click', async () => {
+    const r = state.result;
+    const images = Array.isArray(r?.images) ? r.images : [];
+    if (!r || images.length === 0) return;
+    try {
+        const html = buildBodyHtmlWithImages(r.content || '', r.outline || [], images);
+        await navigator.clipboard.write([
+            new ClipboardItem({
+                'text/html': new Blob([html], { type: 'text/html' }),
+                'text/plain': new Blob([r.content || ''], { type: 'text/plain' }),
+            }),
+        ]);
+        toast('본문+사진을 복사했습니다 — 본문 영역 클릭 후 Ctrl+V 해주세요 (에디터가 이미지 붙여넣기를 지원해야 사진도 함께 들어갑니다)', 'ok');
+    } catch {
+        toast('복사에 실패했습니다. 사진은 각 "복사" 버튼으로 하나씩 넣어주세요', 'err');
     }
 });
 
