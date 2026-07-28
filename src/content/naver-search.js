@@ -1,8 +1,10 @@
 /**
  * 레드플 — 네이버 검색결과 오버레이 (search.naver.com)
  *
- * 검색 키워드의 월간 검색량(PC/모바일)·블로그 문서수·경쟁률·포화도·황금키워드 여부와
- * 12개월 검색 트렌드 스파크라인, 검색결과(SERP) 섹션 구성 순서를 우측 상단 카드로 표시한다.
+ * 기본 상태는 우측에 작은 원형 버튼(FAB)만 떠 있고, 클릭하면 카드가 펼쳐진다.
+ * 검색할 때마다 자동으로 펼쳐서 화면을 가리지 않도록, 데이터가 바뀌어도 접힌 상태는
+ * 유지한다(세션 동안). 카드에는 검색량·경쟁률·트렌드·SERP 섹션 구성이 표시되고,
+ * 섹션 칩을 누르면 그 섹션으로 바로 스크롤된다("섹션 네비게이터" 역할 겸용).
  *
  * 콘텐트 스크립트는 ES 모듈 불가 → IIFE 단일 파일. 네트워크는 전부 background 경유.
  */
@@ -10,8 +12,11 @@
     'use strict';
 
     const chromeApi = /** @type {any} */ (globalThis.chrome);
+    const FAB_ID = 'redple-search-fab';
     const CARD_ID = 'redple-search-card';
     let lastQuery = null;
+    let lastData = null;
+    let lastSections = [];
 
     function sendBg(cmd, payload = {}) {
         return new Promise((resolve) => {
@@ -47,7 +52,7 @@
         return Number(n).toLocaleString('ko-KR');
     }
 
-    /** SERP 섹션 구성 분석 — 페이지의 주요 콘텐츠 블록 헤더를 순서대로 수집 */
+    /** SERP 섹션 구성 분석 — 페이지의 주요 콘텐츠 블록 헤더를 순서대로 수집(엘리먼트도 함께 보관해 점프에 씀) */
     function analyzeSerpSections() {
         const KNOWN = [
             '파워링크', '인기글', '블로그', '카페', '인플루언서', '지식iN', '지식인',
@@ -60,7 +65,7 @@
             const t = (h.textContent || '').trim();
             if (!t || t.length > 20) return;
             const match = KNOWN.find((k) => t === k || t.startsWith(k));
-            if (match && !found.includes(match)) found.push(match);
+            if (match && !found.some((f) => f.label === match)) found.push({ label: match, el: h });
         });
         return found.slice(0, 8);
     }
@@ -99,19 +104,46 @@
         return '<span class="redple-badge redple-badge-red">경쟁 높음</span>';
     }
 
+    // ── FAB(원형 버튼) ────────────────────────────────────────────
+
+    function ensureFab() {
+        let fab = document.getElementById(FAB_ID);
+        if (fab) return fab;
+        fab = document.createElement('button');
+        fab.id = FAB_ID;
+        fab.title = '레드플 키워드 분석 열기';
+        fab.innerHTML = '<span class="redple-fab-logo">R</span><span class="redple-fab-dot"></span>';
+        fab.addEventListener('click', () => setExpanded(true));
+        document.body.appendChild(fab);
+        return fab;
+    }
+
+    function isExpanded() {
+        return sessionStorage.getItem('redple-expanded') === '1';
+    }
+
+    function setExpanded(expanded) {
+        sessionStorage.setItem('redple-expanded', expanded ? '1' : '0');
+        const fab = document.getElementById(FAB_ID);
+        const card = document.getElementById(CARD_ID);
+        if (fab) fab.classList.toggle('redple-hidden', expanded);
+        if (card) card.classList.toggle('redple-hidden', !expanded);
+        if (expanded && !card && lastData) render(lastQuery, lastData, lastSections);
+    }
+
+    // ── 카드 ────────────────────────────────────────────────────
+
     function render(query, data, sections) {
         removeCard();
         const card = document.createElement('div');
         card.id = CARD_ID;
-
-        const collapsed = sessionStorage.getItem('redple-collapsed') === '1';
-        if (collapsed) card.classList.add('redple-collapsed');
+        if (!isExpanded()) card.classList.add('redple-hidden');
 
         const sectionsHtml = sections.length
             ? `<div class="redple-row redple-sections">
-                 <span class="redple-label">노출 순서</span>
+                 <span class="redple-label">노출 순서 <em>(클릭하면 이동)</em></span>
                  <span class="redple-section-list">${sections.map((s, i) =>
-                    `<span class="redple-section-chip${s === '블로그' || s === '인플루언서' ? ' redple-chip-hot' : ''}">${i + 1}. ${esc(s)}</span>`).join('')}
+                    `<button class="redple-section-chip${s.label === '블로그' || s.label === '인플루언서' ? ' redple-chip-hot' : ''}" data-idx="${i}">${i + 1}. ${esc(s.label)}</button>`).join('')}
                  </span>
                </div>`
             : '';
@@ -120,7 +152,7 @@
           <div class="redple-head">
             <span class="redple-logo">R</span>
             <span class="redple-title">레드플 키워드 분석</span>
-            <button class="redple-toggle" title="접기/펼치기">${collapsed ? '+' : '−'}</button>
+            <button class="redple-toggle" title="접기">−</button>
           </div>
           <div class="redple-body">
             <div class="redple-keyword">
@@ -158,10 +190,12 @@
             <a class="redple-more" href="https://www.redrank.kr/keyword/analyze?keyword=${encodeURIComponent(query)}" target="_blank" rel="noopener">레드랭크에서 상세 분석 →</a>
           </div>`;
 
-        card.querySelector('.redple-toggle').addEventListener('click', () => {
-            const isNow = card.classList.toggle('redple-collapsed');
-            sessionStorage.setItem('redple-collapsed', isNow ? '1' : '0');
-            card.querySelector('.redple-toggle').textContent = isNow ? '+' : '−';
+        card.querySelector('.redple-toggle').addEventListener('click', () => setExpanded(false));
+        card.querySelectorAll('.redple-section-chip').forEach((chip) => {
+            chip.addEventListener('click', () => {
+                const idx = Number(chip.dataset.idx);
+                sections[idx]?.el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
         });
 
         document.body.appendChild(card);
@@ -171,17 +205,18 @@
         removeCard();
         const card = document.createElement('div');
         card.id = CARD_ID;
+        if (!isExpanded()) card.classList.add('redple-hidden');
         card.innerHTML = `
           <div class="redple-head">
             <span class="redple-logo">R</span>
             <span class="redple-title">레드플</span>
-            <button class="redple-toggle" title="닫기">×</button>
+            <button class="redple-toggle" title="접기">−</button>
           </div>
           <div class="redple-body">
             <div class="redple-keyword"><b>${esc(query)}</b></div>
             <p class="redple-error">${esc(message)}</p>
           </div>`;
-        card.querySelector('.redple-toggle').addEventListener('click', removeCard);
+        card.querySelector('.redple-toggle').addEventListener('click', () => setExpanded(false));
         document.body.appendChild(card);
     }
 
@@ -191,11 +226,13 @@
 
     async function run() {
         const settings = await getSettings();
-        if (!settings.searchOverlay) { removeCard(); return; }
+        if (!settings.searchOverlay) { removeCard(); document.getElementById(FAB_ID)?.remove(); return; }
 
         const query = getQuery();
         if (!query || query === lastQuery) return;
         lastQuery = query;
+
+        ensureFab();
 
         const res = await sendBg('api.keyword', { keyword: query });
         // 탭 URL이 그 사이 바뀌었으면 무시
@@ -205,7 +242,9 @@
             renderError(query, res.error || '검색량 조회에 실패했습니다');
             return;
         }
-        render(query, res.data || {}, analyzeSerpSections());
+        lastData = res.data || {};
+        lastSections = analyzeSerpSections();
+        render(query, lastData, lastSections);
     }
 
     // 네이버 검색은 SPA처럼 pushState로 쿼리가 바뀌는 경우가 있어 주기적으로 감지

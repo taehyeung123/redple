@@ -68,8 +68,43 @@
 
 #redple-editor-panel .redple-toggle:hover { background: rgba(255, 255, 255, 0.24); }
 
-#redple-editor-panel.redple-collapsed { max-height: none; }
-#redple-editor-panel.redple-collapsed .redple-body { display: none; }
+#redple-editor-panel.redple-hidden { display: none; }
+
+/* ── 원형 버튼(FAB) — 기본 상태, 클릭하면 패널이 펼쳐진다 ── */
+#redple-editor-fab {
+    position: fixed;
+    top: 76px;
+    right: 16px;
+    z-index: 2147483000;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #1a1a1d 0%, #0e0e10 100%);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.24);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.15s;
+}
+
+#redple-editor-fab:hover { transform: scale(1.08); }
+#redple-editor-fab.redple-hidden { display: none; }
+
+#redple-editor-fab .redple-fab-logo {
+    width: 21px;
+    height: 21px;
+    border-radius: 6px;
+    background: #ff3b3b;
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 900;
+    line-height: 21px;
+    text-align: center;
+    box-shadow: 0 0 8px rgba(255, 59, 59, 0.6);
+}
 
 #redple-editor-panel .redple-body {
     flex: 1;

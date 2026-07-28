@@ -521,19 +521,40 @@
         });
     }
 
+    function isPanelExpanded() {
+        return localStorage.getItem('redple-panel-expanded') === '1';
+    }
+
+    function setPanelExpanded(expanded) {
+        localStorage.setItem('redple-panel-expanded', expanded ? '1' : '0');
+        document.getElementById('redple-editor-fab')?.classList.toggle('redple-hidden', expanded);
+        document.getElementById(PANEL_ID)?.classList.toggle('redple-hidden', !expanded);
+    }
+
+    function ensurePanelFab() {
+        if (document.getElementById('redple-editor-fab')) return;
+        const fab = document.createElement('button');
+        fab.id = 'redple-editor-fab';
+        fab.title = '레드플 열기';
+        fab.innerHTML = '<span class="redple-fab-logo">R</span>';
+        if (isPanelExpanded()) fab.classList.add('redple-hidden');
+        fab.addEventListener('click', () => setPanelExpanded(true));
+        document.body.appendChild(fab);
+    }
+
     function buildPanel() {
         if (document.getElementById(PANEL_ID)) return;
+        ensurePanelFab();
 
         const panel = document.createElement('div');
         panel.id = PANEL_ID;
-        const collapsed = localStorage.getItem('redple-panel-collapsed') === '1';
-        if (collapsed) panel.classList.add('redple-collapsed');
+        if (!isPanelExpanded()) panel.classList.add('redple-hidden');
 
         panel.innerHTML = `
           <div class="redple-head">
             <span class="redple-logo">R</span>
             <span class="redple-title">레드플</span>
-            <button class="redple-toggle" title="접기/펼치기">${collapsed ? '+' : '−'}</button>
+            <button class="redple-toggle" title="접기">−</button>
           </div>
 
           <div class="redple-body">
@@ -594,12 +615,7 @@
         document.body.appendChild(panel);
 
         // 이벤트 바인딩
-        panel.querySelector('.redple-toggle').addEventListener('click', () => {
-            const now = panel.classList.toggle('redple-collapsed');
-            localStorage.setItem('redple-panel-collapsed', now ? '1' : '0');
-            panel.querySelector('.redple-toggle').textContent = now ? '+' : '−';
-        });
-
+        panel.querySelector('.redple-toggle').addEventListener('click', () => setPanelExpanded(false));
         panel.querySelector('#redple-apply').addEventListener('click', applyDraft);
         panel.querySelector('#redple-open-panel').addEventListener('click', () => sendBg('panel.open'));
         panel.querySelector('#redple-morph-run').addEventListener('click', runMorpheme);

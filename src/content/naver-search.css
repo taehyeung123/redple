@@ -74,7 +74,55 @@
 
 #redple-search-card .redple-toggle:hover { background: rgba(255, 255, 255, 0.24); }
 
-#redple-search-card.redple-collapsed .redple-body { display: none; }
+#redple-search-card.redple-hidden { display: none; }
+
+/* ── 원형 버튼(FAB) — 기본 상태, 클릭하면 카드가 펼쳐진다 ── */
+#redple-search-fab {
+    position: fixed;
+    top: 84px;
+    right: 20px;
+    z-index: 2147483000;
+    width: 42px;
+    height: 42px;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #1a1a1d 0%, #0e0e10 100%);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.22);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: redple-in 0.22s ease;
+    transition: transform 0.15s;
+}
+
+#redple-search-fab:hover { transform: scale(1.08); }
+#redple-search-fab.redple-hidden { display: none; }
+
+#redple-search-fab .redple-fab-logo {
+    width: 20px;
+    height: 20px;
+    border-radius: 6px;
+    background: #ff3b3b;
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 900;
+    line-height: 20px;
+    text-align: center;
+    box-shadow: 0 0 8px rgba(255, 59, 59, 0.6);
+}
+
+#redple-search-fab .redple-fab-dot {
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #2ecc71;
+    border: 1.5px solid #0e0e10;
+}
 
 #redple-search-card .redple-body { padding: 12px 13px 13px; }
 
@@ -152,6 +200,12 @@
     color: #888888;
 }
 
+#redple-search-card .redple-label em {
+    font-style: normal;
+    font-weight: 400;
+    color: #aaaaaa;
+}
+
 #redple-search-card .redple-section-list {
     display: flex;
     flex-wrap: wrap;
@@ -160,18 +214,26 @@
 
 #redple-search-card .redple-section-chip {
     padding: 2.5px 6px;
+    border: none;
     border-radius: 5px;
     background: #f0f0f2;
     color: #555555;
+    font-family: inherit;
     font-size: 10px;
     line-height: 1.4;
+    cursor: pointer;
+    transition: background 0.15s;
 }
+
+#redple-search-card .redple-section-chip:hover { background: #e2e2e5; }
 
 #redple-search-card .redple-chip-hot {
     background: #ffecec;
     color: #d33;
     font-weight: 700;
 }
+
+#redple-search-card .redple-chip-hot:hover { background: #ffdada; }
 
 #redple-search-card .redple-more {
     display: block;
