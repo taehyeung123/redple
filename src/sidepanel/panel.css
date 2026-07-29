@@ -266,6 +266,20 @@ input::placeholder, textarea::placeholder { color: var(--text-3); }
     text-decoration: underline;
 }
 
+.img-error {
+    margin: 6px 0 0;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: #ffecec;
+    color: #c22;
+    font-size: 11px;
+    line-height: 1.5;
+}
+
+@media (prefers-color-scheme: dark) {
+    .img-error { background: #3a1f1f; color: #ff8080; }
+}
+
 
 /* 슬라이더 */
 .len-val {

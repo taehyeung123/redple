@@ -308,6 +308,8 @@ $('go').addEventListener('click', async () => {
         state.result.images = images;
 
         if (images.length === 0) {
+            // 토스트는 4초면 사라져서 놓치기 쉽다 — 결과 화면에도 그대로 남겨서 원인을 확인할 수 있게 한다.
+            state.result.imageError = firstError || '이미지 생성에 실패했습니다';
             toast(`이미지 생성에 실패했습니다${firstError ? ' — ' + firstError : ''}. 원고는 정상적으로 만들어졌습니다.`, 'warn');
         } else if (failCount > 0) {
             toast(`이미지 ${images.length}장 생성 완료 (${failCount}장 실패${firstError ? ': ' + firstError : ''})`, 'warn');
@@ -332,10 +334,13 @@ function renderResult(r) {
     $('r-len').textContent = `${(r.content || '').replace(/\s/g, '').length.toLocaleString('ko-KR')}자 (공백제외)`;
 
     const images = Array.isArray(r.images) ? r.images : [];
-    $('r-images-title').classList.toggle('hidden', images.length === 0);
+    const hasImageError = images.length === 0 && !!r.imageError;
+    $('r-images-title').classList.toggle('hidden', images.length === 0 && !hasImageError);
     $('r-images-hint').classList.toggle('hidden', images.length === 0);
     $('copy-body-images').classList.toggle('hidden', images.length === 0);
     $('copy-body-images-hint').classList.toggle('hidden', images.length === 0);
+    $('r-images-error').classList.toggle('hidden', !hasImageError);
+    $('r-images-error').textContent = hasImageError ? `이미지 생성 실패: ${r.imageError}` : '';
     $('r-images').innerHTML = images.map((im, i) => `
       <div class="r-image-item">
         <img src="${im.dataUrl}" alt="생성된 이미지 ${i + 1}">
