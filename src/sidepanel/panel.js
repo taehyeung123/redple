@@ -284,12 +284,19 @@ $('go').addEventListener('click', async () => {
     // 이미지도 함께 요청했으면 원고 생성 직후 이어서 만든다 — "원고+사진 한 번에".
     // 같은 프롬프트를 count장 반복 생성하면 서로 비슷한 사진만 나오므로, 본문 소제목(outline)
     // 하나마다 별도 프롬프트로 한 장씩 생성해 실제 내용과 어울리는 다양한 사진을 만든다.
+    //
+    // ⚠️ 예전엔 Promise.all로 전부 동시에 보냈는데, 서버가 이미지 1장당 실패 시 최대 2회까지
+    // 재시도하는 구조라 최악의 경우 한 번에 최대 18건(요청수×3)이 같은 Gemini API 키로
+    // 동시에 날아갈 수 있었다 — 이러면 구글 쪽 동시요청/분당 한도에 걸려 전부 실패로
+    // 돌아오는 게 매번 재현됐을 가능성이 높다. 순차로(하나씩) 보내도록 바꿨다 — 조금
+    // 느려지지만, 요청이 몰려서 전부 같이 실패하는 걸 막는다.
     if (state.imageCount > 0) {
-        $('loading').querySelector('p').textContent = `이미지 ${state.imageCount}장을 만들고 있습니다…`;
         const prompts = buildImagePrompts(state.result, mainKeyword, state.imageCount);
-        const results = await Promise.all(
-            prompts.map((prompt) => api.generateImage({ prompt, style: 'realistic', size: 'blog', count: 1 }))
-        );
+        const results = [];
+        for (let i = 0; i < prompts.length; i++) {
+            $('loading').querySelector('p').textContent = `이미지 만드는 중… (${i + 1}/${prompts.length})`;
+            results.push(await api.generateImage({ prompt: prompts[i], style: 'realistic', size: 'blog', count: 1 }));
+        }
 
         const images = [];
         let failCount = 0;
