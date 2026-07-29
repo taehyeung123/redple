@@ -21,26 +21,6 @@
     const PANEL_ID = 'redple-editor-panel';
     const DRAFT_MAGIC = '__redrank_draft__';
 
-    // 레드랭크 브랜드 네온 로고(public/r-logo.svg)를 그대로 재현 — 어두운 뱃지 + 빨간 글로우 R.
-    // id는 검색 오버레이/에디터 패널 콘텐트 스크립트가 같은 페이지에 동시에 있어도
-    // 충돌하지 않도록 접두사를 붙인다.
-    const FAB_LOGO_SVG = `<svg viewBox="0 0 140 140" class="redple-fab-svg" aria-hidden="true">
-      <defs>
-        <linearGradient id="redple-fab-bg-e" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stop-color="#151515"/><stop offset="50%" stop-color="#0f0f0f"/><stop offset="100%" stop-color="#1a1a1a"/>
-        </linearGradient>
-        <linearGradient id="redple-fab-red-e" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stop-color="#ff3b3b"/><stop offset="100%" stop-color="#cc0000"/>
-        </linearGradient>
-        <filter id="redple-fab-glow-e" x="-50%" y="-50%" width="200%" height="200%">
-          <feGaussianBlur stdDeviation="4" result="blur"/>
-          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-        </filter>
-      </defs>
-      <rect x="0" y="0" width="140" height="140" rx="28" fill="url(#redple-fab-bg-e)" stroke="url(#redple-fab-red-e)" stroke-width="3"/>
-      <text x="70" y="85" text-anchor="middle" dominant-baseline="central" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="100" fill="url(#redple-fab-red-e)" filter="url(#redple-fab-glow-e)">R</text>
-    </svg>`;
-
     // ── 에디터 DOM 접근 (다단계 폴백) ───────────────────────────
 
     /** 제목 입력 영역 후보 */
@@ -644,7 +624,7 @@
         const fab = document.createElement('button');
         fab.id = 'redple-editor-fab';
         fab.title = '레드플 열기 (드래그해서 위치를 옮길 수 있어요)';
-        fab.innerHTML = `<span class="redple-fab-circle">${FAB_LOGO_SVG}</span>`;
+        fab.innerHTML = `<span class="redple-fab-r">R</span>`;
         if (isPanelExpanded()) fab.classList.add('redple-hidden');
         document.body.appendChild(fab);
         makeFabDraggable(fab, 'redpleFabPosEditor', () => setPanelExpanded(true));
